@@ -1,0 +1,27 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace WEB.DOMAIN.Entity
+{
+    public class UserInfo : BaseEntity
+    {
+        public Guid UserID { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string ContactNumber { get; set; }
+
+        public Guid RoleID { get; set; }
+        public Role Role { get; set; }
+
+        public Auth Auth { get; set; }
+        public Driver Driver { get; set; }
+        public Client Client { get; set; }
+        public Helper Helper { get; set; }
+        public TruckVendor TruckVendor { get; set; }
+    }
+}
