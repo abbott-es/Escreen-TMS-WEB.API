@@ -21,5 +21,6 @@ namespace WEB.DOMAIN.Interface
         void Update(T entity);
         void Delete(T entity);
         Task DeleteRangeAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
+        IQueryable<T> Query(bool asNoTracking = true);
     }
 }

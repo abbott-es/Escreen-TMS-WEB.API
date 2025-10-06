@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
 using FluentValidation.AspNetCore;
-using LanguageExt;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,8 +11,10 @@ using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.SERVICES.MappingProfile;
 using WEB.SERVICES.Service;
+using WEB.SERVICES.Service.JWT;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
+using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.SERVICES
 {
@@ -27,6 +28,8 @@ namespace WEB.SERVICES
             });
 
             services.AddMemoryCache();
+            services.AddScoped<ITokenService, TokenService>();
+            services.AddScoped<ITokenLifecycleService, TokenLifecycleService>();
 
             // Initialize the singleton manually
             var rsaKeyManager = RsaKeyManager.Instance;

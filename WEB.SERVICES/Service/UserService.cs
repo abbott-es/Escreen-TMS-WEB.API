@@ -12,7 +12,7 @@ using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Logger;
-using WEB.UTILITY.Security;
+using WEB.UTILITY.Security.ISecurity;
 using static Dapper.SqlMapper;
 
 namespace WEB.SERVICES.Service

@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using WEB.AUTHENTICATION.JWT;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
+using WEB.SERVICES.Service.JWT;
 using RefreshRequest = Microsoft.AspNetCore.Identity.Data.RefreshRequest;
 
 namespace WEB.AUTHENTICATION.Controllers
@@ -15,11 +16,13 @@ namespace WEB.AUTHENTICATION.Controllers
         private static readonly Dictionary<string, string> _refreshTokens = new(); // Replace with DB or Redis
         private readonly ITokenService _tokenService;
         private readonly IUserService _userService;
+        private readonly ITokenLifecycleService _tokenLifecycleService;
 
-        public AuthController(ITokenService tokenService, IUserService userService)
+        public AuthController(ITokenService tokenService, IUserService userService, ITokenLifecycleService tokenLifecycleService)
         {
             _tokenService = tokenService;
             _userService = userService;
+            _tokenLifecycleService = tokenLifecycleService;
         }
 
         [HttpPost("create-auth")]
@@ -35,47 +38,71 @@ namespace WEB.AUTHENTICATION.Controllers
                 )
             );
         }
-        //[HttpPost("login")]
-        //public IActionResult Login([FromBody] AuthDTO request)
-        //{
-        //    if (request.Username != "admin" || request.Password != "password")
-        //        return Unauthorized();
 
-        //    var claims = new[]
+        //[HttpPost("login")]
+        //public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        //{
+        //    var user = await _userService.ValidateCredentialsAsync(dto.Username, dto.Password);
+        //    if (user == null) return Unauthorized("Invalid credentials");
+
+        //    var claims = new List<Claim>
         //    {
-        //        new Claim(ClaimTypes.NameIdentifier, "admin-id"),
-        //        new Claim(ClaimTypes.Name, request.Username),
-        //        new Claim(ClaimTypes.Role, "Admin")
+        //        new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+        //        new Claim(ClaimTypes.Name, user.Username),
+        //        new Claim(ClaimTypes.Role, user.Role.Name)
         //    };
 
         //    var accessToken = _tokenService.GenerateAccessToken(claims);
-        //    var refreshToken = _tokenService.GenerateRefreshToken();
+        //    var jti = new JwtSecurityTokenHandler().ReadJwtToken(accessToken).Id;
 
-        //    _refreshTokens[refreshToken] = "admin-id"; // Store securely
+        //    var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, "web");
 
-        //    return Ok(new { accessToken, refreshToken });
+        //    return Ok(new
+        //    {
+        //        AccessToken = accessToken,
+        //        RefreshToken = tokenRecord.RefreshToken,
+        //        TokenId = tokenRecord.TokenID,
+        //        ExpiresIn = TimeSpan.FromMinutes(30).TotalSeconds
+        //    });
         //}
 
         //[HttpPost("refresh")]
-        //public IActionResult Refresh([FromBody] WEB.SERVICES.DTO.RefreshRequest request)
+        //public async Task<IActionResult> RefreshToken([FromBody] RefreshRequestDto dto)
         //{
-        //    if (!_refreshTokens.TryGetValue(request.RefreshToken, out var userId))
-        //        return Unauthorized();
+        //    var token = await _tokenLifecycleService.GetByRefreshTokenAsync(dto.RefreshToken);
+        //    if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
+        //        return Unauthorized("Invalid or expired refresh token");
 
-        //    var claims = new[]
-        //    {
-        //        new Claim(ClaimTypes.NameIdentifier, userId),
-        //        new Claim(ClaimTypes.Name, "admin"),
-        //        new Claim(ClaimTypes.Role, "Admin")
-        //    };
+        //    var user = token.User;
+
+        //    var claims = new List<Claim>
+        //{
+        //    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+        //    new Claim(ClaimTypes.Name, user.Username),
+        //    new Claim(ClaimTypes.Role, user.Role.Name)
+        //};
 
         //    var newAccessToken = _tokenService.GenerateAccessToken(claims);
-        //    var newRefreshToken = _tokenService.GenerateRefreshToken();
+        //    var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newAccessToken).Id;
 
-        //    _refreshTokens.Remove(request.RefreshToken);
-        //    _refreshTokens[newRefreshToken] = userId;
+        //    token.AccessTokenJti = newJti;
+        //    await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID);
 
-        //    return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });
+        //    return Ok(new
+        //    {
+        //        AccessToken = newAccessToken,
+        //        RefreshToken = token.RefreshToken,
+        //        TokenId = token.TokenID,
+        //        ExpiresIn = TimeSpan.FromMinutes(30).TotalSeconds
+        //    });
         //}
+
+        [HttpPost("revoke")]
+        [Authorize]
+        public async Task<IActionResult> RevokeToken([FromBody] Guid tokenId)
+        {
+            await _tokenLifecycleService.RevokeTokenAsync(tokenId);
+            return Ok("Token revoked");
+        }
     }
 }

@@ -56,5 +56,9 @@ namespace WEB.DAL.Repository
 
             _dbSet.RemoveRange(entities);
         }
+        public IQueryable<T> Query(bool asNoTracking = true)
+        {
+            return asNoTracking ? _dbSet.AsNoTracking() : _dbSet;
+        }
     }
 }

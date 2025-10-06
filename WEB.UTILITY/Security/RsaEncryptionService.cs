@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using WEB.UTILITY.Logger;
+using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.UTILITY.Security
 {

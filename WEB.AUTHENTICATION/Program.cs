@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using WEB.AUTHENTICATION.JWT;
 using WEB.SERVICES;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
@@ -19,7 +18,6 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSharedServices(builder.Configuration);
 builder.Services.AddValidatorServices();
-builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

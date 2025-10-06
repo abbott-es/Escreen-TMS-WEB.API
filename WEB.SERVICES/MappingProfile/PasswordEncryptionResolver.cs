@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
+using Isopoh.Cryptography.Argon2;
 using WEB.DOMAIN.Entity;
 using WEB.SERVICES.DTO;
-using WEB.UTILITY.Security;
+using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.SERVICES.MappingProfile
 {
@@ -16,7 +17,8 @@ namespace WEB.SERVICES.MappingProfile
 
         public string Resolve(UserDto source, Auth destination, string destMember, ResolutionContext context)
         {
-            return _rsaEncryptionService.Encrypt(source.Password);
+            string hashedPassword = Argon2.Hash(source.Password);
+            return _rsaEncryptionService.Encrypt(hashedPassword);
         }
     }
 

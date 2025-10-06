@@ -3,9 +3,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using WEB.SERVICES.IService;
 using WEB.UTILITY.Security;
 
-namespace WEB.AUTHENTICATION.JWT
+namespace WEB.SERVICES.Service.JWT
 {
     public class TokenService : ITokenService
     {

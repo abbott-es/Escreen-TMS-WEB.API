@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace WEB.AUTHENTICATION.JWT
+namespace WEB.SERVICES.IService
 {
     public interface ITokenService
     {
