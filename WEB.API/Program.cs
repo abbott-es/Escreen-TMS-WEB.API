@@ -6,6 +6,7 @@ using Serilog;
 using System.Text;
 using WEB.API.SwaggerFilter;
 using WEB.SERVICES;
+using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -88,6 +89,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseMiddleware<JwtThrottlingMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

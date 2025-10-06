@@ -26,12 +26,13 @@ namespace WEB.SERVICES
                 cfg.AddProfile<MapProfile>();
             });
 
+            services.AddMemoryCache();
+
             // Initialize the singleton manually
             var rsaKeyManager = RsaKeyManager.Instance;
             rsaKeyManager.LoadPublicKey(configuration["RsaKeys:Public"]);
             rsaKeyManager.LoadPrivateKey(configuration["RsaKeys:Private"]);
             services.AddSingleton(rsaKeyManager);
-
             services.AddHttpContextAccessor(); // Required for accessing HttpContext
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

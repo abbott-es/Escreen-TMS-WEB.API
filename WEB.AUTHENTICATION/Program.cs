@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WEB.AUTHENTICATION.JWT;
 using WEB.SERVICES;
+using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
-
+app.UseMiddleware<JwtThrottlingMiddleware>();
 app.MapControllers();
 
 app.Run();
