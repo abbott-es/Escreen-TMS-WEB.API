@@ -17,14 +17,14 @@ namespace WEB.SERVICES.Service
         private readonly IMapper _mapper;
         private readonly IValidator<UserDto> _validator;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IAppLogger<UserInfo> _logger;
+        private readonly IAppLogger<User> _logger;
         private readonly IRsaEncryptionService _rsaEncryptionService;
 
         public AuthService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IValidator<UserDto> validator,
-            IAppLogger<UserInfo> logger,
+            IAppLogger<User> logger,
             IRepository<Auth> authRepository,
             IRsaEncryptionService rsaEncryptionService)
         {
@@ -35,7 +35,7 @@ namespace WEB.SERVICES.Service
             _logger = logger;
             _authRepository = authRepository;
         }
-        public async Task<UserInfo?> ValidateCredentialsAsync(string username, string encryptedPassword)
+        public async Task<User?> ValidateCredentialsAsync(string username, string encryptedPassword)
         {
             return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
             {

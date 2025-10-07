@@ -9,12 +9,12 @@ namespace WEB.SERVICES.Service.JWT
     public class TokenLifecycleService : ITokenLifecycleService
     {
         private readonly IRepository<UserToken> _tokenRepository;
-        private readonly IEFUnitOfWork _unitOfWork;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
 
         public TokenLifecycleService(
             IRepository<UserToken> tokenRepository,
-            IEFUnitOfWork unitOfWork,
+            IUnitOfWork unitOfWork,
             ITokenService tokenService)
         {
             _tokenRepository = tokenRepository;

@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WEB.DOMAIN.Interface;
 
 namespace WEB.DOMAIN.Entity
 {
-    public class Auth
+    public class Auth : IEntity
     {
         public Guid AuthID { get; set; }
         public Guid UserID { get; set; }
@@ -14,6 +15,6 @@ namespace WEB.DOMAIN.Entity
         public string PasswordHash { get; set; }
         public DateTime LastLogin { get; set; }
 
-        public UserInfo User { get; set; }
+        public User User { get; set; }
     }
 }

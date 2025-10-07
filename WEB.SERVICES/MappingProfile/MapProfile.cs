@@ -9,7 +9,7 @@ namespace WEB.SERVICES.MappingProfile
     {
         public MapProfile()
         {
-            CreateMap<UserDto, UserInfo>()
+            CreateMap<UserDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(_ => Guid.NewGuid()))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true));

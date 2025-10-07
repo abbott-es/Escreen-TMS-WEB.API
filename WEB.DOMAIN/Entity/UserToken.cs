@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WEB.DOMAIN.Interface;
 
 namespace WEB.DOMAIN.Entity
 {
-    public class UserToken
+    public class UserToken : IEntity
     {
         public Guid TokenID { get; set; }
         public Guid UserID { get; set; }
@@ -21,6 +22,6 @@ namespace WEB.DOMAIN.Entity
 
         public string DeviceInfo { get; set; }
 
-        public UserInfo User { get; set; }
+        public User User { get; set; }
     }
 }

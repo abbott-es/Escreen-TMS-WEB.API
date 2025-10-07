@@ -4,7 +4,7 @@ using WEB.DOMAIN.Entity;
 
 namespace WEB.DOMAIN.Config
 {
-    public class UserTokenConfiguration : IEntityTypeConfiguration<UserToken>
+    public class UserTokenConfig : IEntityTypeConfiguration<UserToken>
     {
         public void Configure(EntityTypeBuilder<UserToken> builder)
         {
@@ -23,7 +23,7 @@ namespace WEB.DOMAIN.Config
             builder.HasOne(t => t.User)
                 .WithMany()
                 .HasForeignKey(t => t.UserID)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 
