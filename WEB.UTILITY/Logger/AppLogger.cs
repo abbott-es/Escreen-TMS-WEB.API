@@ -65,6 +65,14 @@ namespace WEB.UTILITY.Logger
             }
         }
 
+        public void LogDebug(string message, params object[] args)
+        {
+            using (PushRequestContext())
+            {
+                _logger.Debug(message, args);
+            }
+        }
+
     }
 
 }
