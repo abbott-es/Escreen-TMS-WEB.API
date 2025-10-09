@@ -76,6 +76,10 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration));
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true;
+});
 
 var app = builder.Build();
 app.UseSerilogRequestLogging();

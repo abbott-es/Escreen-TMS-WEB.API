@@ -21,6 +21,10 @@ builder.Services.AddValidatorServices();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true;
+});
 
 var app = builder.Build();
 

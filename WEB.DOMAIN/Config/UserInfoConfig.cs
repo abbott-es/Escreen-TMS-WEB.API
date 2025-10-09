@@ -12,7 +12,7 @@ namespace WEB.DOMAIN.Config
 
             builder.HasOne(ui => ui.User)
                    .WithOne(p => p.UserInfo)
-                   .HasForeignKey<UserInfo>(ui => ui.UserInfoID)
+                   .HasForeignKey<UserInfo>(ui => ui.UserID)
                    .OnDelete(DeleteBehavior.Restrict);
         }
     }

@@ -13,7 +13,6 @@ namespace WEB.AUTHENTICATION.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private static readonly Dictionary<string, string> _refreshTokens = new(); // Replace with DB or Redis
         private readonly ITokenService _tokenService;
         private readonly IUserService _userService;
         private readonly ITokenLifecycleService _tokenLifecycleService;

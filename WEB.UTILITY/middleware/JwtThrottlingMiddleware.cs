@@ -13,7 +13,7 @@ namespace WEB.UTILITY.middleware
     {
         private readonly RequestDelegate _next;
         private readonly IMemoryCache _cache;
-        private readonly int _limit = 100;
+        private readonly int _limit = 20;
         private readonly TimeSpan _window = TimeSpan.FromMinutes(1);
 
         public JwtThrottlingMiddleware(RequestDelegate next, IMemoryCache cache)

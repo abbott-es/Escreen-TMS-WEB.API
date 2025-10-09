@@ -19,7 +19,8 @@ namespace WEB.SERVICES.Service
 {
     public sealed class UserService : GenericService<UserInfo, UserDto>, IUserService
     {
-        private readonly IRepository<UserInfo> _userRepository;
+        private readonly IRepository<User> _userRepository;
+        private readonly IRepository<UserInfo> _userInfoRepository;
         private readonly IRepository<Auth> _authRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<UserDto> _validator;
@@ -29,26 +30,28 @@ namespace WEB.SERVICES.Service
 
         public UserService(
             IUnitOfWork unitOfWork,
-            IRepository<UserInfo> userRepository,
+            IRepository<UserInfo> userInfoRepository,
             IMapper mapper,
             IValidator<UserDto> validator,
             IAppLogger<UserInfo> logger,
             IRepository<Auth> authRepository,
-            IRsaEncryptionService rsaEncryptionService
-        ) : base(unitOfWork, userRepository, mapper, validator, logger)
+            IRsaEncryptionService rsaEncryptionService,
+            IRepository<User> userRepository
+        ) : base(unitOfWork, userInfoRepository, mapper, validator, logger)
         {
-            _userRepository = userRepository;
+            _userInfoRepository = userInfoRepository;
             _mapper = mapper;
             _validator = validator;
             _unitOfWork = unitOfWork;
             _rsaEncryptionService = rsaEncryptionService;
             _logger = logger;
             _authRepository = authRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<UserDto?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
-            var user = (await _userRepository.GetAllAsync(ct))
+            var user = (await _userInfoRepository.GetAllAsync(ct))
                        .FirstOrDefault(u => u.Email == email);
             return user == null ? null : _mapper.Map<UserDto>(user);
         }
@@ -62,12 +65,15 @@ namespace WEB.SERVICES.Service
                 var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
                 return string.Join("; ", errors.Select(e => $"{e.ErrorMessage}"));
             }
-            var user = _mapper.Map<UserInfo>(authDTO);
+            var user = _mapper.Map<User>(authDTO);
+            var userInfo = _mapper.Map<UserInfo>(authDTO);
             var auth = _mapper.Map<Auth>(authDTO);
             auth.UserID = user.UserID;
+            userInfo.UserID = user.UserID;
             await _unitOfWork.ExecuteAsync(async c =>
             {
                 await _userRepository.AddAsync(user, c);
+                await _userInfoRepository.AddAsync(userInfo, c);
                 await _authRepository.AddAsync(auth, c);
             }, ct);
             return user.UserID;
