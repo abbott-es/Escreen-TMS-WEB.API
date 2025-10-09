@@ -44,8 +44,10 @@ namespace WEB.SERVICES
             services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
+            services.AddTransient<GetSessionResolver>();
             services.AddScoped<IGenericService<UserDto>, UserService>();//for generic service
             services.AddScoped<IUserService, UserService>();//custom service
+            services.AddScoped<IAuthService, AuthService>();
 
             return services;
         }

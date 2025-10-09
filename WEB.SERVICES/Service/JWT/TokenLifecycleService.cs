@@ -2,6 +2,7 @@
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Security;
 
 namespace WEB.SERVICES.Service.JWT
 {
@@ -11,15 +12,18 @@ namespace WEB.SERVICES.Service.JWT
         private readonly IRepository<UserToken> _tokenRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
+        private readonly JwtSettings _settings;
 
         public TokenLifecycleService(
             IRepository<UserToken> tokenRepository,
             IUnitOfWork unitOfWork,
-            ITokenService tokenService)
+            ITokenService tokenService,
+            JwtSettings settings)
         {
             _tokenRepository = tokenRepository;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
+            _settings = settings;
         }
 
         public async Task<UserToken> IssueTokenAsync(Guid userId, string jti, string deviceInfo)
@@ -30,7 +34,7 @@ namespace WEB.SERVICES.Service.JWT
                 UserID = userId,
                 AccessTokenJti = jti,
                 RefreshToken = _tokenService.GenerateRefreshToken(),
-                RefreshTokenExpiry = DateTime.UtcNow.AddDays(7),
+                RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays),
                 IssuedAt = DateTime.UtcNow,
                 IsRevoked = false,
                 DeviceInfo = deviceInfo
@@ -52,7 +56,7 @@ namespace WEB.SERVICES.Service.JWT
                 if (token == null || token.IsRevoked) return null;
 
                 token.RefreshToken = _tokenService.GenerateRefreshToken();
-                token.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+                token.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays);
                 _tokenRepository.Update(token);
                 return token;
             });
@@ -88,11 +92,44 @@ namespace WEB.SERVICES.Service.JWT
                     .Query(asNoTracking: true)
                     .Include(t => t.User)
                     .ThenInclude(u => u.Role)
+                    .Include(a => a.User)
+                    .ThenInclude(a => a.Auth)
                     .FirstOrDefaultAsync(t => t.RefreshToken == refreshToken && !t.IsRevoked, ct);
             });
         }
 
+        public async Task<UserToken?> GetActiveSessionAsync(Guid userId)
+        {
+            return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
+            {
+                return await _tokenRepository
+                    .Query(asNoTracking: true)
+                    .Include(t => t.User)
+                    .FirstOrDefaultAsync(t => t.UserID == userId && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow, ct);
+            });
+        }
+
+        public async Task UpdateAccessTokenJtiAsync(Guid tokenId, string newJti)
+        {
+            await _unitOfWork.ExecuteAsync(async ct =>
+            {
+                var token = await _tokenRepository.GetByIdAsync(tokenId, ct);
+                if (token == null || token.IsRevoked) return;
+
+                token.AccessTokenJti = newJti;
+                _tokenRepository.Update(token);
+            });
+        }
+        public async Task<UserToken?> GetByTokenIdAsync(Guid tokenId)
+        {
+            return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
+            {
+                return await _tokenRepository
+                    .Query(asNoTracking: true)
+                    .Include(t => t.User)
+                    .ThenInclude(u => u.Role)
+                    .FirstOrDefaultAsync(t => t.TokenID == tokenId, ct);
+            });
+        }
     }
-
-
 }

@@ -5,6 +5,7 @@ using LanguageExt;
 using LanguageExt.Pipes;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
+using Microsoft.EntityFrameworkCore;
 using WEB.DAL;
 using WEB.DAL.Repository;
 using WEB.DOMAIN.Entity;
@@ -55,28 +56,17 @@ namespace WEB.SERVICES.Service
                        .FirstOrDefault(u => u.Email == email);
             return user == null ? null : _mapper.Map<UserDto>(user);
         }
-
-        public async Task<Either<string, Guid>> CreateUserAsync(UserDto authDTO, CancellationToken ct = default)
+        public async Task<User> GetUserByIdAsync(string userId, CancellationToken ct = default)
         {
-
-            var validate = await _validator.ValidateAsync(authDTO, ct);
-            if (!validate.IsValid)
+            return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
             {
-                var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                return string.Join("; ", errors.Select(e => $"{e.ErrorMessage}"));
-            }
-            var user = _mapper.Map<User>(authDTO);
-            var userInfo = _mapper.Map<UserInfo>(authDTO);
-            var auth = _mapper.Map<Auth>(authDTO);
-            auth.UserID = user.UserID;
-            userInfo.UserID = user.UserID;
-            await _unitOfWork.ExecuteAsync(async c =>
-            {
-                await _userRepository.AddAsync(user, c);
-                await _userInfoRepository.AddAsync(userInfo, c);
-                await _authRepository.AddAsync(auth, c);
-            }, ct);
-            return user.UserID;
+                var auth = await _authRepository
+                    .Query(asNoTracking: true)
+                    .Include(a => a.User)
+                    .ThenInclude(x => x.Role)
+                    .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userId) && a.User.IsActive, ct);
+                return auth.User;
+            });
         }
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)

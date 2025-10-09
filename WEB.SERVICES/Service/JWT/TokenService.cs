@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using WEB.DOMAIN.Entity;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Security;
 
@@ -17,19 +18,35 @@ namespace WEB.SERVICES.Service.JWT
             _settings = settings;
         }
 
-        public string GenerateAccessToken(IEnumerable<Claim> claims)
+        public (string accessToken, DateTime expiresIn) GenerateAccessToken(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            try
+            {
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(ClaimTypes.Name, user.Auth.Username),
+                    new Claim(ClaimTypes.Role, user.Role.RoleName)
+                };
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                DateTime expiresIn = DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpiryMinutes);
 
-            var token = new JwtSecurityToken(
-                issuer: _settings.Issuer,
-                audience: _settings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpiryMinutes),
-                signingCredentials: creds);
+                var token = new JwtSecurityToken(
+                    issuer: _settings.Issuer,
+                    audience: _settings.Audience,
+                    claims: claims,
+                    expires: expiresIn,
+                    signingCredentials: creds);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                return (new JwtSecurityTokenHandler().WriteToken(token), expiresIn);
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex);
+                throw;
+            }
         }
 
         public string GenerateRefreshToken()

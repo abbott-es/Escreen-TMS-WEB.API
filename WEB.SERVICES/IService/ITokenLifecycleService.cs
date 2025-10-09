@@ -14,6 +14,9 @@ namespace WEB.SERVICES.IService
         Task RevokeTokenAsync(Guid tokenId);
         Task<bool> IsAccessTokenRevokedAsync(string jti);
         Task<UserToken> GetByRefreshTokenAsync(string refreshToken);
+        Task<UserToken?> GetActiveSessionAsync(Guid userId);
+        Task UpdateAccessTokenJtiAsync(Guid tokenId, string newJti);
+        Task<UserToken?> GetByTokenIdAsync(Guid tokenId);
     }
 
 }

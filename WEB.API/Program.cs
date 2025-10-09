@@ -6,6 +6,7 @@ using Serilog;
 using System.Text;
 using WEB.API.SwaggerFilter;
 using WEB.SERVICES;
+using WEB.UTILITY.Convention;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
 
@@ -15,7 +16,11 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSetting
 builder.Services.AddSingleton(jwtSettings);
 // Add services to the container.
 
-builder.Services.AddControllers();
+
+builder.Services.AddControllers(options =>
+{
+    options.Conventions.Add(new ApiResponseConvention());
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddDataAccess(options =>
@@ -55,7 +60,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Enter 'Bearer' followed by your JWT token"
+        Description = "Enter your JWT token"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -92,6 +97,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<TokenRevocationMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<JwtThrottlingMiddleware>();
 app.UseAuthorization();

@@ -6,7 +6,7 @@ using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.SERVICES.MappingProfile
 {
-    public class PasswordEncryptionResolver : IValueResolver<UserDto, Auth, string>
+    public class PasswordEncryptionResolver : IValueResolver<AuthDto, Auth, string>
     {
         private readonly IRsaEncryptionService _rsaEncryptionService;
 
@@ -15,7 +15,7 @@ namespace WEB.SERVICES.MappingProfile
             _rsaEncryptionService = rsaEncryptionService;
         }
 
-        public string Resolve(UserDto source, Auth destination, string destMember, ResolutionContext context)
+        public string Resolve(AuthDto source, Auth destination, string destMember, ResolutionContext context)
         {
             string hashedPassword = Argon2.Hash(source.Password);
             return _rsaEncryptionService.Encrypt(hashedPassword);
