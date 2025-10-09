@@ -1,7 +1,11 @@
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using WEB.GATEWAY.Interfaces;
+using WEB.GATEWAY.Models;
 using WEB.UTILITY.Logger;
 
 namespace Web.Gateway.Middleware;
@@ -27,27 +31,57 @@ public class ReverseProxyServiceMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value ?? string.Empty;
+        var path = context.Request.Path.Value?.ToLower() ?? string.Empty;
         var method = context.Request.Method;
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
+        var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+       
+        var route = _proxyConfigService.GetRoutes()
+            .FirstOrDefault(r =>
+                r.Match?.Path is string matchPath &&
+                path.StartsWith(matchPath.TrimEnd('*'), StringComparison.OrdinalIgnoreCase) &&
+                (r.Match.Methods == null || r.Match.Methods.Contains(method, StringComparer.OrdinalIgnoreCase)));
+        string? rateLimitPolicy = null;
+        
+        route?.Metadata?.TryGetValue("RateLimitPolicy", out rateLimitPolicy);
 
-        var route = _proxyConfigService.GetRoutes().FirstOrDefault(r =>
-            r.Match != null &&
-            !string.IsNullOrEmpty(r.Match.Path) &&
-            path.StartsWith(r.Match.Path.TrimEnd('*'), System.StringComparison.OrdinalIgnoreCase) &&
-            (r.Match.Methods == null || r.Match.Methods.Contains(method, System.StringComparer.OrdinalIgnoreCase)));
+        RateLimitOptions? rateLimit = _rateLimitService.GetPolicy(rateLimitPolicy ?? "blocked");
+        context.Response.Headers["X-RateLimit-Limit"] = rateLimit?.PermitLimit.ToString() ?? "0";
+        context.Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow
+            .Add(TimeSpan.FromSeconds(rateLimit.WindowSeconds)).ToUnixTimeSeconds().ToString();
 
-        if (route?.Metadata != null &&
-            route.Metadata.TryGetValue("RateLimitPolicy", out var policyName) &&
-            _rateLimitService.GetPolicy(policyName) != null)
+        if (rateLimit is { PolicyName: "blocked" })
         {
-            _logger.LogDebug("Applying rate limit policy '{Policy}' for route '{RouteId}'", policyName, route.RouteId);
-
-            context.SetEndpoint(new Endpoint(
-                async ctx => await _next(ctx),
-                new EndpointMetadataCollection(new RateLimiterPolicyMetadata(policyName)),
-                $"RateLimitedEndpoint:{route.RouteId}"
-            ));
+            await context.Response.WriteAsync("Rate limit blocked. Try again later.");
         }
+
+        if (rateLimitPolicy is not null && rateLimit is not null)
+        {
+            _logger.LogDebug("Applying rate limit policy '{Policy}' for route '{RouteId}'", rateLimitPolicy, route?.RouteId!);
+
+        }
+
+        // Functional-style loading of headers, query strings, and form parameters
+        var allParams = new Dictionary<string, string>();
+
+        context.Request.Headers
+            .ToList()
+            .ForEach(header => allParams[$"Header:{header.Key}"] = header.Value.ToString());
+
+        context.Request.Query
+            .ToList()
+            .ForEach(query => allParams[$"Query:{query.Key}"] = query.Value.ToString());
+
+        if (context.Request.HasFormContentType)
+        {
+            var form = await context.Request.ReadFormAsync();
+            form.ToList()
+                .ForEach(param => allParams[$"Form:{param.Key}"] = param.Value.ToString());
+        }
+
+        // Store all collected parameters in HttpContext.Items
+        context.Items["RequestPayload"] = allParams;
+        
 
         await _next(context);
     }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Interfaces;
+using Web.Gateway.Middleware;
 using WEB.GATEWAY.Models;
 using WEB.GATEWAY.Services;
 using WEB.UTILITY.Logger;
