@@ -9,7 +9,7 @@ namespace WEB.SERVICES.IService
 {
     public interface ITokenLifecycleService
     {
-        Task<UserToken> IssueTokenAsync(Guid userId, string jti, string deviceInfo);
+        Task<UserToken> IssueTokenAsync(Guid userId, string jti);
         Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId);
         Task RevokeTokenAsync(Guid tokenId);
         Task<bool> IsAccessTokenRevokedAsync(string jti);
@@ -17,6 +17,8 @@ namespace WEB.SERVICES.IService
         Task<UserToken?> GetActiveSessionAsync(Guid userId);
         Task UpdateAccessTokenJtiAsync(Guid tokenId, string newJti);
         Task<UserToken?> GetByTokenIdAsync(Guid tokenId);
+        Task<bool> RevokeByAccessAndRefreshTokenAsync(string accessToken, string refreshToken);
+        string? GetJtiFromToken(string token);
     }
 
 }

@@ -12,6 +12,7 @@ using WEB.SERVICES.IService;
 using WEB.SERVICES.MappingProfile;
 using WEB.SERVICES.Service;
 using WEB.SERVICES.Service.JWT;
+using WEB.SERVICES.Validation;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
 using WEB.UTILITY.Security.ISecurity;
@@ -63,6 +64,7 @@ namespace WEB.SERVICES
         {
             services.AddFluentValidationClientsideAdapters();
             services.AddValidatorsFromAssemblyContaining<AuthDTOValidator>();
+            services.AddValidatorsFromAssemblyContaining<LogoutDtoValidator>();
 
             return services;
         }

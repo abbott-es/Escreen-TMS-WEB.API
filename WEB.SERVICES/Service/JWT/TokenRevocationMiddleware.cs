@@ -21,7 +21,7 @@ namespace WEB.UTILITY.middleware
 
             if (!string.IsNullOrEmpty(token))
             {
-                var jti = GetJtiFromToken(token);
+                var jti = _tokenLifecycleService.GetJtiFromToken(token);
 
                 if (!string.IsNullOrEmpty(jti) && await _tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
                 {
@@ -31,13 +31,6 @@ namespace WEB.UTILITY.middleware
                 }
             }
             await _next(context);
-        }
-
-        private string? GetJtiFromToken(string token)
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-            return jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
         }
     }
 }
