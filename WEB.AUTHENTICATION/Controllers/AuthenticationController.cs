@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
-using WEB.SERVICES.Service;
+using WEB.UTILITY.Logger;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -16,16 +16,19 @@ namespace WEB.AUTHENTICATION.Controllers
         private readonly IAuthService _authService;
         private readonly ITokenLifecycleService _tokenLifecycleService;
         private readonly IValidator<LogoutDto> _logoutValidator;
+        private readonly IAppLogger<AuthenticationController> _appLogger;
 
-        public AuthenticationController(ITokenService tokenService, 
-            IAuthService authService, 
-            ITokenLifecycleService tokenLifecycleService, 
-            IValidator<LogoutDto> logoutValidator)
+        public AuthenticationController(ITokenService tokenService,
+            IAuthService authService,
+            ITokenLifecycleService tokenLifecycleService,
+            IValidator<LogoutDto> logoutValidator,
+            IAppLogger<AuthenticationController> appLogger)
         {
             _tokenService = tokenService;
             _authService = authService;
             _tokenLifecycleService = tokenLifecycleService;
             _logoutValidator = logoutValidator;
+            _appLogger = appLogger;
         }
 
         /// <summary>
@@ -57,21 +60,29 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AuthDto authDto)
         {
-            var user = await _authService.ValidateCredentialsAsync(authDto.Username, authDto.Password);
-            if (user == null) return Unauthorized("Invalid credentials");
-
-            var token = _tokenService.GenerateAccessToken(user);
-            var jti = new JwtSecurityTokenHandler().ReadJwtToken(token.accessToken).Id;
-
-            var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti);
-
-            return Ok(new
+            try
             {
-                AccessToken = token.accessToken,
-                RefreshToken = tokenRecord.RefreshToken,
-                TokenId = tokenRecord.TokenID,
-                ExpiresIn = token.expiresIn
-            });
+                var user = await _authService.ValidateCredentialsAsync(authDto.Username, authDto.Password);
+                if (user == null) return Unauthorized("Invalid credentials");
+
+                var token = _tokenService.GenerateAccessToken(user);
+                var jti = new JwtSecurityTokenHandler().ReadJwtToken(token.accessToken).Id;
+
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti);
+
+                return Ok(new
+                {
+                    AccessToken = token.accessToken,
+                    RefreshToken = tokenRecord.RefreshToken,
+                    TokenId = tokenRecord.TokenID,
+                    ExpiresIn = token.expiresIn
+                });
+            }
+            catch (Exception err)
+            {
+                _appLogger.LogError(err, "Internal Server Error");
+                return StatusCode(500, "Internal Server Error");
+            }
         }
 
         /// <summary>
