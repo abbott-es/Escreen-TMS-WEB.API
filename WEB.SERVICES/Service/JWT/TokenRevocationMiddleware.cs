@@ -1,18 +1,18 @@
 ﻿using Microsoft.AspNetCore.Http;
-using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.DependencyInjection;
 using WEB.SERVICES.IService;
 
-namespace WEB.UTILITY.middleware
+namespace WEB.SERVICES.Service.JWT
 {
     public class TokenRevocationMiddleware
     {
-        private readonly ITokenLifecycleService _tokenLifecycleService;
         private readonly RequestDelegate _next;
+        private readonly IServiceProvider _serviceProvider;
 
-        public TokenRevocationMiddleware(RequestDelegate next, ITokenLifecycleService tokenLifecycleService)
+        public TokenRevocationMiddleware(RequestDelegate next, IServiceProvider serviceProvider)
         {
             _next = next;
-            _tokenLifecycleService = tokenLifecycleService;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -21,13 +21,17 @@ namespace WEB.UTILITY.middleware
 
             if (!string.IsNullOrEmpty(token))
             {
-                var jti = _tokenLifecycleService.GetJtiFromToken(token);
-
-                if (!string.IsNullOrEmpty(jti) && await _tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("Access token has been revoked.");
-                    return;
+                    var tokenLifecycleService = scope.ServiceProvider.GetRequiredService<ITokenLifecycleService>();
+                    var jti = tokenLifecycleService.GetJtiFromToken(token);
+
+                    if (!string.IsNullOrEmpty(jti) && await tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsync("Access token has been revoked.");
+                        return;
+                    }
                 }
             }
             await _next(context);
