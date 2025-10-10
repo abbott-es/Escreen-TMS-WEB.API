@@ -1,6 +1,8 @@
-﻿using AutoMapper;
+﻿using System.Linq.Expressions;
+using AutoMapper;
 using FluentValidation;
 using LanguageExt;
+using Microsoft.EntityFrameworkCore;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
@@ -46,11 +48,12 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        public virtual async Task<Either<string, IEnumerable<TDto>>> GetAllAsync(CancellationToken ct = default)
+        public virtual async Task<Either<string, IEnumerable<TDto>>> GetAllAsync(CancellationToken ct = default, params string[] includePaths)
         {
             try
             {
-                var entities = await _repository.GetAllAsync(ct);
+                var entities = await _repository.GetAllAsync(ct, true, includePaths
+                );
                 return _mapper.Map<IEnumerable<TDto>>(entities).ToList();
             }
             catch (Exception ex)

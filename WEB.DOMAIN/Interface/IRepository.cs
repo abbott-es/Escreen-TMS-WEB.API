@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,7 +9,8 @@ namespace WEB.DOMAIN.Interface
 {
     public interface IRepository<T> where T : class
     {
-        Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true);
+        Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true,
+            params string[] includePaths);
 
         // If your entities always use Guid Id:
         Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);
