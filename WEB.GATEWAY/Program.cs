@@ -10,6 +10,7 @@ using System.Threading.RateLimiting;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
 using WEB.GATEWAY.Services;
+using WEB.UTILITY.Logger;
 
 namespace WEB.GATEWAY;
 
@@ -26,22 +27,10 @@ public static class Program
 
         app.UseRateLimiter();
         app.MapReverseProxy();
-
-        // Add Custom Mapping
-        app.MapGatewayApiRouting();
-        app.MapGet("/", () => "Hello World!");
+        app.UseSerilogRequestLogging();
 
         app.Run();
         Log.CloseAndFlush();
-    }
-
-    /// <summary>
-    /// Load the Gateway Route to Backend Apis
-    /// </summary>
-    /// <param name="app"></param>
-    private static void MapGatewayApiRouting(this WebApplication app)
-    {
-
     }
 
     /// <summary>
@@ -59,6 +48,8 @@ public static class Program
         builder.Host.UseSerilog();
         Log.Information("API Gateway Initialized");
 
+        builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
+
     }
 
     /// <summary>
@@ -68,11 +59,17 @@ public static class Program
     private static void LoadDependencyPipelines(this WebApplicationBuilder builder)
     {
         // Load configuration files
+        builder.Configuration.AddEnvironmentVariables();
+
         builder.Configuration
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true)
-            .AddEnvironmentVariables();
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+        if (!builder.Environment.EnvironmentName.Equals("Local", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.Configuration
+            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
+        }
 
         builder.SetupLogger();
 
@@ -117,7 +114,7 @@ public static class Program
                             PermitLimit = policy.PermitLimit,
                             Window = TimeSpan.FromSeconds(policy.WindowSeconds),
                             QueueLimit = policy.QueueLimit,
-                            QueueProcessingOrder = Enum.Parse<QueueProcessingOrder>(policy.QueueProcessingOrder)
+                            QueueProcessingOrder = Enum.Parse<QueueProcessingOrder>(policy.QueueProcessingOrder, ignoreCase: true)
                         }));
             }
         });
