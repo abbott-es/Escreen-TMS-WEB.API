@@ -5,7 +5,6 @@ using System.IdentityModel.Tokens.Jwt;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
-using WEB.UTILITY.Logger;
 
 namespace WEB.AUTHENTICATION.Controllers
 {

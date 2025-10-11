@@ -21,6 +21,6 @@ namespace WEB.DOMAIN.Entity
         public Client Client { get; set; }
         public Helper Helper { get; set; }
         public TruckVendor TruckVendor { get; set; }
-        public virtual UserInfo UserInfo { get; set; }
+        public UserInfo UserInfo { get; set; }
     }
 }
