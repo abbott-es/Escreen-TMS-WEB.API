@@ -5,5 +5,8 @@ namespace WEB.GATEWAY.Interfaces;
 
 public interface IRateLimitConfig
 {
-    Dictionary<string, RateLimitOptions> Policies { get; set; }
+    /// <summary>
+    /// Get all RateLimit Policy
+    /// </summary>
+    IReadOnlyDictionary<string, RateLimitOptions> Policies { get; }
 }

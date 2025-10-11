@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
 using System.Text;
 using WEB.SERVICES;
+using WEB.SERVICES.Service.JWT;
 using WEB.UTILITY.Convention;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
@@ -94,6 +95,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<TokenRevocationMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<JwtThrottlingMiddleware>();
 app.UseAuthorization();

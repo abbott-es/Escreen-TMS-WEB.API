@@ -6,12 +6,14 @@ using Microsoft.Extensions.DependencyInjection;
 using WEB.DAL;
 using WEB.DAL.AppDbContext;
 using WEB.DAL.Repository;
+using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.SERVICES.MappingProfile;
 using WEB.SERVICES.Service;
 using WEB.SERVICES.Service.JWT;
+using WEB.SERVICES.Validation;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
 using WEB.UTILITY.Security.ISecurity;
@@ -45,10 +47,18 @@ namespace WEB.SERVICES
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
             services.AddTransient<GetSessionResolver>();
-            services.AddScoped<IGenericService<UserDto>, UserService>();//for generic service
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
 
+            return services;
+        }
+
+        //This keeps the shared project generic service
+        public static IServiceCollection AddGenericService(this IServiceCollection services)
+        {
+            services.AddScoped<IGenericService<UserDto>, UserService>();
+            services.AddScoped(typeof(IGenericService<RoleDto>), typeof(GenericService<Role, RoleDto>));
+            services.AddScoped(typeof(IGenericService<ClientDto>), typeof(GenericService<Client, ClientDto>));
             return services;
         }
 
@@ -63,6 +73,11 @@ namespace WEB.SERVICES
         {
             services.AddFluentValidationClientsideAdapters();
             services.AddValidatorsFromAssemblyContaining<AuthDTOValidator>();
+            services.AddValidatorsFromAssemblyContaining<LogoutDtoValidator>();
+            services.AddValidatorsFromAssemblyContaining<RoleDtoValidator>();
+            services.AddScoped<IValidator<RoleDto>, RoleDtoValidator>();
+            services.AddValidatorsFromAssemblyContaining<ClientDtoValidator>();
+            services.AddScoped<IValidator<ClientDto>, ClientDtoValidator>();
 
             return services;
         }

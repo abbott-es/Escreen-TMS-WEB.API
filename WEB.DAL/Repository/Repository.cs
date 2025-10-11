@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Linq.Expressions;
 using WEB.DOMAIN.Interface;
 
 namespace WEB.DAL.Repository
@@ -15,10 +16,16 @@ namespace WEB.DAL.Repository
             _dbSet = _context.Set<T>();
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true)
+        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths)
         {
             IQueryable<T> query = _dbSet;
-            if (asNoTracking) query = query.AsNoTracking();
+
+            if (asNoTracking)
+                query = query.AsNoTracking();
+
+            foreach (var include in includePaths)
+                query = query.Include(include);
+
             return await query.ToListAsync(ct);
         }
 

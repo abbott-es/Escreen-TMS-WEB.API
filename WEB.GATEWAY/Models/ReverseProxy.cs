@@ -5,6 +5,6 @@ namespace WEB.GATEWAY.Models;
 
 public class ReverseProxy
 {
-    public List<RouteConfig> Routes { get; set; } = new();
-    public List<ClusterConfig> Clusters { get; set; } = new();
+    public IReadOnlyList<RouteConfig> Routes { get; set; } = [];
+    public IReadOnlyList<ClusterConfig> Clusters { get; set; } = [];
 }

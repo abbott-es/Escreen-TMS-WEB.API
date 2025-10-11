@@ -1,124 +1,88 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Serilog;
 using System;
 using System.IO;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using Web.Gateway.Middleware;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
 using WEB.GATEWAY.Services;
 using WEB.UTILITY.Logger;
 
-namespace WEB.GATEWAY;
+// Load configuration and create builder
+var builder = WebApplication.CreateBuilder(args);
+// Load configuration files
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+// Load environment-specific configuration if it exists
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+// Setup Logger
+Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).Enrich.FromLogContext().CreateLogger();
 
-public static class Program
+builder.Host.UseSerilog();
+Log.ForContext<Program>().Information(
+    "API Gateway Initialized in {Environment} environment {Date} on {Urls}",
+    builder.Environment.EnvironmentName,
+    DateTime.UtcNow.ToUniversalTime(),
+    builder.Configuration.GetValue<string>("ASPNETCORE_URLS") ?? "not set"
+);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
+
+// Setup Reverse Proxy
+Log.ForContext<Program>().Information("Setting up Reverse Proxy");
+builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.AddSingleton<ProxyConfigServiceProvider>();
+builder.Services.AddSingleton<Yarp.ReverseProxy.Configuration.IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
+builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
+builder.Services.AddReverseProxy();
+
+// Setup Rate Limiting
+builder.Services.Configure<RateLimitConfig>(builder.Configuration.GetSection("RateLimiting"));
+builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
+
+// Register Rate Limiter Policies
+builder.Services.AddRateLimiter(options =>
 {
-    public static void Main(string[] args)
+    var rateLimitConfig = builder.Configuration.Get<RateLimitConfig>();
+    if (rateLimitConfig?.Policies != null)
     {
-
-        var builder = WebApplication.CreateBuilder(args);
-
-        builder.LoadDependencyPipelines();
-
-        var app = builder.Build();
-
-        app.UseRateLimiter();
-        app.MapReverseProxy();
-        app.UseSerilogRequestLogging();
-
-        app.Run();
-        Log.CloseAndFlush();
-    }
-
-    /// <summary>
-    /// Initialize the logging system setup
-    /// </summary>
-    /// <param name="builder"></param>
-    private static void SetupLogger(this WebApplicationBuilder builder)
-    {
-
-        Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
-            .CreateLogger();
-
-        builder.Host.UseSerilog();
-        Log.Information("API Gateway Initialized");
-
-        builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
-
-    }
-
-    /// <summary>
-    /// Loads all dependency
-    /// </summary>
-    /// <param name="builder"></param>
-    private static void LoadDependencyPipelines(this WebApplicationBuilder builder)
-    {
-        // Load configuration files
-        builder.Configuration.AddEnvironmentVariables();
-
-        builder.Configuration
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-        if (!builder.Environment.EnvironmentName.Equals("Local", StringComparison.OrdinalIgnoreCase))
+        Log.ForContext<Program>().Information("Configuring Rate Limiting policies");
+        foreach (var (policyName, policy) in rateLimitConfig.Policies)
         {
-            builder.Configuration
-            .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true);
+            options.AddPolicy(policyName, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Request.Path.ToString(),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = policy.PermitLimit,
+                        Window = TimeSpan.FromSeconds(policy.WindowSeconds),
+                        QueueLimit = policy.QueueLimit,
+                        QueueProcessingOrder = Enum.Parse<QueueProcessingOrder>(policy.QueueProcessingOrder, ignoreCase: true)
+                    }));
         }
-
-        builder.SetupLogger();
-
-        // Setup Reverse Proxy
-        builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection("ReverseProxy"));
-        builder.Services.LoadGatewayProxyConfigService();
-
-        builder.Services.Configure<RateLimitConfig>(builder.Configuration.GetSection("RateLimiting"));
-
-        builder.Services.LoadGatewayProxyRateLimiter();
     }
-
-    private static void LoadGatewayProxyConfigService(this IServiceCollection service)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
-
-        service.AddSingleton<ProxyConfigServiceProvider>();
-        service.AddSingleton<Yarp.ReverseProxy.Configuration.IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
-        service.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
-
-        IProxyConfigService pxyCfgSvc = service.BuildServiceProvider().GetRequiredService<IProxyConfigService>();
-
-        service.AddReverseProxy().LoadFromMemory(routes: pxyCfgSvc.GetRoutes(), clusters: pxyCfgSvc.GetClusters());
-
-    }
-
-    private static void LoadGatewayProxyRateLimiter(this IServiceCollection service)
+        return RateLimitPartition.GetNoLimiter("NoRateLimitingPolicy");
+    });
+    options.OnRejected = async (context, token) =>
     {
-        service.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsync("Too Many Requests. Please try again later.", cancellationToken: token);
+    };
+});
 
-        var rateConfig = service.BuildServiceProvider().GetRequiredService<IRateLimitConfigServiceProvider>()
-            .GetAllPolicies();
+var app = builder.Build();
 
-        service.AddRateLimiter(options =>
-        {
-            foreach (var (key, policy) in rateConfig)
-            {
-                options.AddPolicy(key, context =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: context.Request.Path.ToString(),
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = policy.PermitLimit,
-                            Window = TimeSpan.FromSeconds(policy.WindowSeconds),
-                            QueueLimit = policy.QueueLimit,
-                            QueueProcessingOrder = Enum.Parse<QueueProcessingOrder>(policy.QueueProcessingOrder, ignoreCase: true)
-                        }));
-            }
-        });
+app.UseSerilogRequestLogging();
+app.UseRateLimiter();
+app.UseMiddleware<ReverseProxyServiceMiddleware>();
+app.MapReverseProxy();
 
-    }
-
-}
+await app.RunAsync();
+await Log.CloseAndFlushAsync();

@@ -1,19 +1,19 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Yarp.ReverseProxy.Configuration;
 
-namespace WEB.GATEWAY.Interfaces
+namespace WEB.GATEWAY.Interfaces;
+
+public interface IProxyConfigService
 {
-    public interface IProxyConfigService
-    {
-        /// <summary>
-        /// Get Config Routes
-        /// </summary>
-        /// <returns>List of Route Config</returns>
-        IReadOnlyList<RouteConfig> GetRoutes();
-        /// <summary>
-        /// Get Config Clusters
-        /// </summary>
-        /// <returns>List of Cluster Config</returns>
-        IReadOnlyList<ClusterConfig> GetClusters();
-    }
+    /// <summary>
+    /// Get Config Routes
+    /// </summary>
+    /// <returns>List of Route Config</returns>
+    Task<IReadOnlyList<RouteConfig>> GetRoutesAsync();
+    /// <summary>
+    /// Get Config Clusters
+    /// </summary>
+    /// <returns>List of Cluster Config</returns>
+    Task<IReadOnlyList<ClusterConfig>> GetClustersAsync();
 }

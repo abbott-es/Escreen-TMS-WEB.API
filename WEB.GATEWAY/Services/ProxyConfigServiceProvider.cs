@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
 using Yarp.ReverseProxy.Configuration;
 
@@ -10,18 +12,16 @@ namespace WEB.GATEWAY.Services
     /// <summary>
     /// Implementing a Reverse Proxy Config Service Provider for dynamic proxy setup
     /// </summary>
-    internal sealed class ProxyConfigServiceProvider : IProxyConfigProvider, Interfaces.IProxyConfigService
+    public sealed class ProxyConfigServiceProvider : IProxyConfigProvider, IProxyConfigService
     {
         private volatile InMemoryConfig _config;
 
         public ProxyConfigServiceProvider(IOptionsMonitor<ReverseProxy> options)
         {
-            var current = options.CurrentValue;
-            _config = BuildConfig(current);
+            _config = BuildConfig(options.CurrentValue);
 
             options.OnChange(updated =>
             {
-                current = updated;
                 _config = BuildConfig(updated);
                 _config.SignalChange();
             });
@@ -35,50 +35,40 @@ namespace WEB.GATEWAY.Services
         /// <summary>
         /// Get Routes from Proxy Config Service Provider
         /// </summary>
-        /// <returns>Read only list of Routes</returns>
-        public IReadOnlyList<RouteConfig> GetRoutes()
+        public Task<IReadOnlyList<RouteConfig>> GetRoutesAsync()
         {
-            return _config.Routes;
+            return Task.FromResult(_config.Routes);
         }
 
         /// <summary>
         /// Get Clusters from Proxy Config Service Provider
         /// </summary>
-        /// <returns>Read only list of Clusters</returns>
-        public IReadOnlyList<ClusterConfig> GetClusters()
+        public Task<IReadOnlyList<ClusterConfig>> GetClustersAsync()
         {
-            return _config.Clusters;
+            return Task.FromResult(_config.Clusters);
         }
 
         /// <summary>
         /// Replace the old config with updated config
         /// </summary>
-        /// <param name="data">Bind Reverse Proxy data</param>
-        /// <returns>Updated Config InMemoryConfig ReverseProxy</returns>
         private static InMemoryConfig BuildConfig(ReverseProxy data)
         {
-            return new InMemoryConfig(data.Routes, data.Clusters);
+            // Defensive copy for immutability
+            var routes = data.Routes != null ? new List<RouteConfig>(data.Routes) : [];
+            var clusters = data.Clusters != null ? new List<ClusterConfig>(data.Clusters) : [];
+            return new InMemoryConfig(routes, clusters);
         }
-        
+
         /// <summary>
         /// Implements store for Routes and Clusters
         /// </summary>
-        private class InMemoryConfig : IProxyConfig
+        private sealed class InMemoryConfig(IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) : IProxyConfig
         {
-            public IReadOnlyList<RouteConfig> Routes { get; }
-            public IReadOnlyList<ClusterConfig> Clusters { get; }
+            public IReadOnlyList<RouteConfig> Routes { get; } = routes;
+            public IReadOnlyList<ClusterConfig> Clusters { get; } = clusters;
             private CancellationTokenSource _cts = new();
 
-            public InMemoryConfig(IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters)
-            {
-                Routes = routes;
-                Clusters = clusters;
-            }
-
-            public IChangeToken ChangeToken
-            {
-                get { return new CancellationChangeToken(_cts.Token); }
-            }
+            public IChangeToken ChangeToken => new CancellationChangeToken(_cts.Token);
 
             public void SignalChange()
             {
@@ -86,6 +76,5 @@ namespace WEB.GATEWAY.Services
                 previousCts.Cancel();
             }
         }
-
     }
 }

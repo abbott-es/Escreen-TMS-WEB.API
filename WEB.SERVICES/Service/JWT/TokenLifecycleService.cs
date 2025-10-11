@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.IService;
@@ -13,20 +14,23 @@ namespace WEB.SERVICES.Service.JWT
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly JwtSettings _settings;
+        private readonly IUserContextService _userContextService;
 
         public TokenLifecycleService(
             IRepository<UserToken> tokenRepository,
             IUnitOfWork unitOfWork,
             ITokenService tokenService,
-            JwtSettings settings)
+            JwtSettings settings,
+            IUserContextService userContextService)
         {
             _tokenRepository = tokenRepository;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _settings = settings;
+            _userContextService = userContextService;
         }
 
-        public async Task<UserToken> IssueTokenAsync(Guid userId, string jti, string deviceInfo)
+        public async Task<UserToken> IssueTokenAsync(Guid userId, string jti)
         {
             var token = new UserToken
             {
@@ -37,7 +41,8 @@ namespace WEB.SERVICES.Service.JWT
                 RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays),
                 IssuedAt = DateTime.UtcNow,
                 IsRevoked = false,
-                DeviceInfo = deviceInfo
+                DeviceInfo = _userContextService.DeviceInfo,
+                IpAddress = _userContextService.IpAddress,
             };
 
             await _unitOfWork.ExecuteAsync(async ct =>
@@ -130,6 +135,42 @@ namespace WEB.SERVICES.Service.JWT
                     .ThenInclude(u => u.Role)
                     .FirstOrDefaultAsync(t => t.TokenID == tokenId, ct);
             });
+        }
+
+        public async Task<bool> RevokeByAccessAndRefreshTokenAsync(string accessToken, string refreshToken)
+        {
+            var isValid = await ValidateTokensAsync(accessToken, refreshToken);
+            if (!isValid) return false;
+
+            var token = await GetByRefreshTokenAsync(refreshToken);
+            if (token == null) return false;
+
+            await RevokeTokenAsync(token.TokenID);
+            return true;
+        }
+
+        public string? GetJtiFromToken(string token)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            return jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+        }
+
+        private async Task<bool> ValidateTokensAsync(string accessToken, string refreshToken)
+        {
+            var jti = GetJtiFromToken(accessToken);
+            if (string.IsNullOrEmpty(jti)) return false;
+
+            var token = await GetByRefreshTokenAsync(refreshToken);
+            if (token == null || token.IsRevoked) return false;
+
+            // Ensure the access token matches the stored JTI
+            if (token.AccessTokenJti != jti) return false;
+
+            // Ensure the refresh token is not expired
+            if (token.RefreshTokenExpiry < DateTime.UtcNow) return false;
+
+            return true;
         }
     }
 }

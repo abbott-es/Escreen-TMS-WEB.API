@@ -5,7 +5,7 @@ using WEB.SERVICES.IService;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
-    [Route("authentication-api/api/sso/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class SessionController : ControllerBase
     {

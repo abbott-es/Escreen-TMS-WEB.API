@@ -6,6 +6,7 @@ using Serilog;
 using System.Text;
 using WEB.API.SwaggerFilter;
 using WEB.SERVICES;
+using WEB.SERVICES.Service.JWT;
 using WEB.UTILITY.Convention;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
@@ -26,6 +27,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddDataAccess(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSharedServices(builder.Configuration);
+builder.Services.AddGenericService();
 builder.Services.AddValidatorServices();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

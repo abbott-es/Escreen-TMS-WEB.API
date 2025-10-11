@@ -21,6 +21,7 @@ namespace WEB.DOMAIN.Entity
         public bool IsRevoked { get; set; }
 
         public string DeviceInfo { get; set; }
+        public string? IpAddress { get; set; }
 
         public User User { get; set; }
     }

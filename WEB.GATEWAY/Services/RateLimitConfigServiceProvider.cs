@@ -7,16 +7,14 @@ using WEB.GATEWAY.Models;
 
 namespace WEB.GATEWAY.Services;
 
-internal sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProvider
+public sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProvider
 {
     private volatile InMemoryConfig _config;
     public RateLimitConfigServiceProvider(IOptionsMonitor<RateLimitConfig> options)
     {
-        var current = options.CurrentValue;
-        _config = BuildConfig(current);
+        _config = BuildConfig(options.CurrentValue);
         options.OnChange(updated =>
         {
-            current = updated;
             _config = BuildConfig(updated);
             _config.SignalChange();
         });
@@ -34,32 +32,25 @@ internal sealed class RateLimitConfigServiceProvider : IRateLimitConfigServicePr
 
     private static InMemoryConfig BuildConfig(RateLimitConfig data)
     {
-        return new InMemoryConfig(data);
+        return new(data);
     }
 
     /// <summary>
     /// Implements store for RateLimiter Config
     /// </summary>
-    private class InMemoryConfig : IRateLimitConfig
+    private sealed class InMemoryConfig(RateLimitConfig config) : IRateLimitConfig
     {
-        public Dictionary<string, RateLimitOptions> Policies { get; set; }
+        public IReadOnlyDictionary<string, RateLimitOptions> Policies { get; } = config.Policies != null
+                ? new Dictionary<string, RateLimitOptions>(config.Policies)
+                : [];
         private CancellationTokenSource _cts = new();
 
-        public InMemoryConfig(RateLimitConfig config)
-        {
-            Policies = config.Policies;
-        }
-        public IChangeToken ChangeToken
-        {
-            get { return new CancellationChangeToken(_cts.Token); }
-        }
+        public IChangeToken ChangeToken => new CancellationChangeToken(_cts.Token);
+
         public void SignalChange()
         {
             var previousCts = Interlocked.Exchange(ref _cts, new CancellationTokenSource());
             previousCts.Cancel();
         }
-
-       
     }
-
 }
