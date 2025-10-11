@@ -26,8 +26,12 @@ namespace WEB.SERVICES
         {
             services.AddAutoMapper(cfg =>
             {
-                cfg.AddProfile<MapProfile>();
+                cfg.AddProfile<AuthProfile>();
+                cfg.AddProfile<UserProfile>();
+                cfg.AddProfile<RoleProfile>();
+                cfg.AddProfile<ClientProfile>();
             });
+            services.AddTransient<IgnoreAuthInClientMapping>();
 
             services.AddMemoryCache();
             services.AddScoped<ITokenService, TokenService>();
@@ -47,6 +51,7 @@ namespace WEB.SERVICES
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
             services.AddTransient<GetSessionResolver>();
+            services.AddTransient<UserWithoutAuthResolver>();
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
 
