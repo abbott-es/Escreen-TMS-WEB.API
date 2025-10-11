@@ -6,11 +6,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using Web.Gateway.Middleware;
+using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
 using WEB.GATEWAY.Services;
 using WEB.UTILITY.Logger;
+using System.Net.Http;
+using System.Net;
+using Yarp.ReverseProxy.Forwarder;
 
 // Load configuration and create builder
 var builder = WebApplication.CreateBuilder(args);
@@ -27,7 +30,7 @@ Log.ForContext<Program>().Information(
     "API Gateway Initialized in {Environment} environment {Date} on {Urls}",
     builder.Environment.EnvironmentName,
     DateTime.UtcNow.ToUniversalTime(),
-    builder.Configuration.GetValue<string>("ASPNETCORE_URLS") ?? "not set"
+    builder.Configuration.GetValue<string>("ASPNETCORE_URLS") ?? "unset"
 );
 
 builder.Services.AddHttpContextAccessor();
@@ -35,20 +38,39 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 
 // Setup Reverse Proxy
 Log.ForContext<Program>().Information("Setting up Reverse Proxy");
-builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 builder.Services.AddSingleton<ProxyConfigServiceProvider>();
 builder.Services.AddSingleton<Yarp.ReverseProxy.Configuration.IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
-builder.Services.AddReverseProxy();
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+
+builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
+{
+    var handler = new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        AutomaticDecompression = DecompressionMethods.None,
+        UseCookies = false
+    };
+    return new HttpMessageInvoker(handler);
+});
+
+builder.Services.AddSingleton(new ForwarderRequestConfig
+{
+    ActivityTimeout = TimeSpan.FromSeconds(360)
+});
+builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
+builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
+builder.Services.AddSingleton<IErrorHandlingStrategy, DefaultErrorHandlingStrategy>();
 
 // Setup Rate Limiting
-builder.Services.Configure<RateLimitConfig>(builder.Configuration.GetSection("RateLimiting"));
+builder.Services.Configure<RateLimitingConfig>(builder.Configuration.GetSection("RateLimiting"));
 builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
 
 // Register Rate Limiter Policies
 builder.Services.AddRateLimiter(options =>
 {
-    var rateLimitConfig = builder.Configuration.Get<RateLimitConfig>();
+    var rateLimitConfig = builder.Configuration.Get<RateLimitingConfig>();
     if (rateLimitConfig?.Policies != null)
     {
         Log.ForContext<Program>().Information("Configuring Rate Limiting policies");
@@ -62,7 +84,7 @@ builder.Services.AddRateLimiter(options =>
                         PermitLimit = policy.PermitLimit,
                         Window = TimeSpan.FromSeconds(policy.WindowSeconds),
                         QueueLimit = policy.QueueLimit,
-                        QueueProcessingOrder = Enum.Parse<QueueProcessingOrder>(policy.QueueProcessingOrder, ignoreCase: true)
+                        QueueProcessingOrder = Enum.TryParse<QueueProcessingOrder>(policy.QueueProcessingOrder, ignoreCase: true, out var queueProcessingOrder) ? queueProcessingOrder : QueueProcessingOrder.OldestFirst
                     }));
         }
     }
@@ -72,8 +94,11 @@ builder.Services.AddRateLimiter(options =>
     });
     options.OnRejected = async (context, token) =>
     {
+
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsync("Too Many Requests. Please try again later.", cancellationToken: token);
+        context.HttpContext.Response.ContentType = "text/plain";
+        context.HttpContext.Response.Headers.RetryAfter = "0";
+        await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
 
@@ -81,7 +106,7 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
-app.UseMiddleware<ReverseProxyServiceMiddleware>();
+app.UseMiddleware<ReverseProxyMiddleware>();
 app.MapReverseProxy();
 
 await app.RunAsync();

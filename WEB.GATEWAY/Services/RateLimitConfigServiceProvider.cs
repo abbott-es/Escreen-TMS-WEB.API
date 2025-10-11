@@ -10,7 +10,7 @@ namespace WEB.GATEWAY.Services;
 public sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProvider
 {
     private volatile InMemoryConfig _config;
-    public RateLimitConfigServiceProvider(IOptionsMonitor<RateLimitConfig> options)
+    public RateLimitConfigServiceProvider(IOptionsMonitor<RateLimitingConfig> options)
     {
         _config = BuildConfig(options.CurrentValue);
         options.OnChange(updated =>
@@ -30,7 +30,7 @@ public sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProv
         return _config.Policies;
     }
 
-    private static InMemoryConfig BuildConfig(RateLimitConfig data)
+    private static InMemoryConfig BuildConfig(RateLimitingConfig data)
     {
         return new(data);
     }
@@ -38,7 +38,7 @@ public sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProv
     /// <summary>
     /// Implements store for RateLimiter Config
     /// </summary>
-    private sealed class InMemoryConfig(RateLimitConfig config) : IRateLimitConfig
+    private sealed class InMemoryConfig(RateLimitingConfig config) : IRateLimitConfig
     {
         public IReadOnlyDictionary<string, RateLimitOptions> Policies { get; } = config.Policies != null
                 ? new Dictionary<string, RateLimitOptions>(config.Policies)
