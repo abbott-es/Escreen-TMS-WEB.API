@@ -75,22 +75,15 @@ public class ReverseProxyServiceMiddleware
         var clusters = await _proxyConfigService.GetClustersAsync();
         if (clusters is null || clusters.Count == 0)
         {
-            await RespondWithError(context, StatusCodes.Status503ServiceUnavailable, "No clusters configured in the proxy configuration.");
+            await RespondWithError(context, StatusCodes.Status503ServiceUnavailable, "No cluster services available.");
             return;
         }
 
-        var cluster = clusters.FirstOrDefault(c => c.ClusterId == route.ClusterId);
-        if (cluster != null)
-        {
-            var destination = cluster.Destinations?.FirstOrDefault().Value?.Address ?? "unknown";
-            context.Request.Headers["X-Forwarded-For"] = destination;
-        }
-
         // Determine rate limit policy for the route
-        string rateLimitPolicy = "blocked";
+        string rateLimitPolicy = string.Empty;
         if (route.Metadata != null && route.Metadata.TryGetValue("RateLimitPolicy", out var policyValue))
         {
-            rateLimitPolicy = policyValue;
+            rateLimitPolicy = policyValue ?? "blocked";
         }
 
         var rateLimit = _rateLimitService.GetPolicy(rateLimitPolicy);
@@ -98,9 +91,9 @@ public class ReverseProxyServiceMiddleware
         // Set rate limit headers only if a valid policy is found
         if (rateLimit != null)
         {
-            context.Request.Headers["X-RateLimit-Limit"] = rateLimit.PermitLimit.ToString();
-            context.Request.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddSeconds(rateLimit.WindowSeconds).ToUnixTimeSeconds().ToString();
-            context.Request.Headers["X-RateLimit-Policy"] = rateLimit.PolicyName;
+            context.Response.Headers["X-RateLimit-Limit"] = rateLimit.PermitLimit.ToString();
+            context.Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddSeconds(rateLimit.WindowSeconds).ToUnixTimeSeconds().ToString();
+            context.Response.Headers["X-RateLimit-Policy"] = rateLimit.PolicyName;
             _logger.LogDebug("Applying rate limit policy '{Policy}' for route '{RouteId}'", rateLimit.PolicyName, route.RouteId);
         }
 
@@ -108,6 +101,7 @@ public class ReverseProxyServiceMiddleware
         if (rateLimit is { PolicyName: "blocked" })
         {
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.Response.Headers["X-RateLimit-Reset"] = DateTimeOffset.UtcNow.AddSeconds(rateLimit.WindowSeconds).ToUnixTimeSeconds().ToString();
             await context.Response.WriteAsync("Rate limit blocked. Try again later.");
             return;
         }
@@ -129,31 +123,5 @@ public class ReverseProxyServiceMiddleware
         context.Response.StatusCode = statusCode;
         _logger.LogError(new SystemException(message), message);
         await context.Response.WriteAsync(message);
-    }
-}
-
-/// <summary>
-/// Marker interface for rate limiter policy metadata.
-/// </summary>
-public interface IRateLimiterPolicyMetadata
-{
-    string PolicyName { get; }
-}
-
-/// <summary>
-/// Implementation of <see cref="IRateLimiterPolicyMetadata"/>.
-/// </summary>
-public class RateLimiterPolicyMetadata : IRateLimiterPolicyMetadata
-{
-    /// <inheritdoc/>
-    public string PolicyName { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RateLimiterPolicyMetadata"/> class.
-    /// </summary>
-    /// <param name="policyName">The name of the rate limiting policy.</param>
-    public RateLimiterPolicyMetadata(string policyName)
-    {
-        PolicyName = policyName;
     }
 }

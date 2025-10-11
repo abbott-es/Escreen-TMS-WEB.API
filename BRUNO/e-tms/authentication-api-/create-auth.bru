@@ -1,0 +1,19 @@
+meta {
+  name: create-auth
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/create-auth
+  body: none
+  auth: bearer
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+settings {
+  encodeUrl: true
+}
