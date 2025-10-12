@@ -5,6 +5,7 @@ using System.IdentityModel.Tokens.Jwt;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
+using WEB.UTILITY.Extension;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -41,17 +42,20 @@ namespace WEB.AUTHENTICATION.Controllers
             {
                 var result = await _authService.CreateUserAsync(authDTO, ct);
                 return result.Match<IActionResult>(
-                    Left: error => BadRequest(new { Error = error }),
-                    Right: id => CreatedAtAction(
-                        nameof(CreateUserHash),   // action name
-                        new { id },        // route values must match {id}
-                        authDTO            // response body
-                    )
+                    Left: error => ApiResponse<string>
+                        .Fail([error], "User creation failed")
+                        .ToBadRequestResult(),
+
+                    Right: id => ApiResponse<UserDto>
+                        .Ok(authDTO, "User created")
+                        .ToCreatedResult()
                 );
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -68,25 +72,38 @@ namespace WEB.AUTHENTICATION.Controllers
             try
             {
                 var user = await _authService.ValidateCredentialsAsync(authDto.Username, authDto.Password, ct);
-                if (user == null) return Unauthorized("Invalid credentials");
+                if (user == null)
+                    return ApiResponse<string>
+                        .Fail(["Invalid credentials"])
+                        .ToUnauthorizedResult();
                 // Log LastLogin timestamp
-                await _authService.UpdateLastLoginAsync(authDto.Username,ct);
+                await _authService.UpdateLastLoginAsync(authDto.Username, ct);
                 var token = _tokenService.GenerateAccessToken(user);
+
                 if (!JwtHelper.TryExtractJti(token.accessToken, out var jti))
-                    return StatusCode(500, "Failed to parse token identifier.");
+                    return ApiResponse<string>
+                        .Fail(["Failed to parse token identifier"])
+                        .ToInternalServerErrorResult();
 
                 var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, ct);
-                return Ok(new
+
+                var response = new
                 {
                     AccessToken = token.accessToken,
                     RefreshToken = tokenRecord.RefreshToken,
                     TokenId = tokenRecord.TokenID,
                     ExpiresIn = token.expiresIn
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Login successful")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -103,7 +120,9 @@ namespace WEB.AUTHENTICATION.Controllers
             {
                 var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
                 if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
-                    return Unauthorized("Invalid or expired refresh token");
+                    return ApiResponse<string>
+                        .Fail(["Invalid or expired refresh token"])
+                        .ToUnauthorizedResult();
 
                 var newToken = _tokenService.GenerateAccessToken(token.User);
                 var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
@@ -111,17 +130,23 @@ namespace WEB.AUTHENTICATION.Controllers
                 token.AccessTokenJti = newJti;
                 await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, ct);
 
-                return Ok(new
+                var response = new
                 {
                     AccessToken = newToken.accessToken,
                     RefreshToken = token.RefreshToken,
                     TokenId = token.TokenID,
                     ExpiresIn = newToken.expiresIn
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Token refreshed")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -137,11 +162,15 @@ namespace WEB.AUTHENTICATION.Controllers
             try
             {
                 await _tokenLifecycleService.RevokeTokenAsync(tokenId);
-                return Ok("Token revoked");
+                return ApiResponse<string>
+                    .Ok(string.Empty,"Token revoked")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -159,18 +188,27 @@ namespace WEB.AUTHENTICATION.Controllers
                 var validate = await _logoutValidator.ValidateAsync(request, ct);
                 if (!validate.IsValid)
                 {
-                    var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                    return BadRequest(errors);
+                    var errors = validate.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}").ToList();
+                    return ApiResponse<string>
+                        .Fail(errors, "Validation failed")
+                        .ToBadRequestResult();
                 }
+
                 var success = await _tokenLifecycleService.RevokeByAccessAndRefreshTokenAsync(request.AccessToken, request.RefreshToken);
                 if (!success)
-                    return Unauthorized("Invalid or already revoked token.");
+                    return ApiResponse<string>
+                        .Fail(["Invalid or already revoked token"])
+                        .ToUnauthorizedResult();
 
-                return Ok(new { message = "Logout successful." });
+                return ApiResponse<string>
+                    .Ok(string.Empty,"Logout successful")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
     }

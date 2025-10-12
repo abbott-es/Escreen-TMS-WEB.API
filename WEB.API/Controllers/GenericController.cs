@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Helper;
+using WEB.UTILITY.Extension;
 
 namespace WEB.API.Controllers
 {
@@ -15,22 +17,30 @@ namespace WEB.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<T>> GetById(Guid id, CancellationToken ct = default)
+        public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
         {
             var result = await _genericService.GetByIdAsync(id, ct);
-            return result.Match<ActionResult>(
-                Left: error => NotFound(new { Error = error }),
-                Right: success => Ok(success)
+            return result.Match<IActionResult>(
+                Left: error => ApiResponse<string>
+                    .Fail([error], "Entity not found")
+                    .ToNotFoundResult(),
+                Right: success => ApiResponse<T>
+                    .Ok(success, "Entity retrieved")
+                    .ToOkResult()
             );
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<T>>> GetAll(CancellationToken ct = default)
+        public async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
         {
-            var result = await _genericService.GetAllAsync(ct);
-            return result.Match<ActionResult>(
-                Left: error => NotFound(new { Error = error }),
-                Right: success => Ok(success)
+            var result = await _genericService.GetAllAsync(ct, includes);
+            return result.Match<IActionResult>(
+                Left: error => ApiResponse<string>
+                    .Fail([error], "No entities found")
+                    .ToNotFoundResult(),
+                Right: entities => ApiResponse<IEnumerable<T>>
+                    .Ok(entities, "Entities retrieved")
+                    .ToOkResult()
             );
         }
 
@@ -39,8 +49,12 @@ namespace WEB.API.Controllers
         {
             var result = await _genericService.AddAsync(entity, ct);
             return result.Match<IActionResult>(
-                Left: error => BadRequest(new { Error = error }),
-                Right: id => CreatedAtAction(nameof(GetById), new { id }, entity)
+                Left: error => ApiResponse<string>
+                    .Fail([error], "Creation failed")
+                    .ToBadRequestResult(),
+                Right: id => ApiResponse<T>
+                    .Ok(entity, "Entity created")
+                    .ToCreatedResult()
             );
         }
 
@@ -49,8 +63,12 @@ namespace WEB.API.Controllers
         {
             var result = await _genericService.UpdateAsync(entity, ct);
             return result.Match<IActionResult>(
-                Left: error => NotFound(new { Error = error }),
-                Right: success => NoContent()
+                Left: error => ApiResponse<string>
+                    .Fail([error], "Update failed")
+                    .ToNotFoundResult(),
+                Right: _ => ApiResponse<string>
+                    .Ok("Entity updated")
+                    .ToOkResult()
             );
         }
 
@@ -58,13 +76,20 @@ namespace WEB.API.Controllers
         public async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
         {
             if (ids == null || !ids.Any())
-                return BadRequest("No IDs provided.");
+            {
+                return ApiResponse<string>
+                    .Fail(["No IDs provided"])
+                    .ToBadRequestResult();
+            }
 
             var result = await _genericService.DeleteListAsync(ids, ct);
-
             return result.Match<IActionResult>(
-                err => BadRequest(new { Error = err }),
-                _ => Ok(new { DeletedCount = ids.Count() })
+                err => ApiResponse<string>
+                    .Fail(["Deletion failed"])
+                    .ToBadRequestResult(),
+                _ => ApiResponse<object>
+                    .Ok(new { DeletedCount = ids.Count() }, "Entities deleted")
+                    .ToOkResult()
             );
         }
     }

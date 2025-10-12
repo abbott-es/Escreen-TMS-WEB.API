@@ -2,6 +2,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Helper;
+using WEB.UTILITY.Extension;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -38,23 +40,37 @@ namespace WEB.AUTHENTICATION.Controllers
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
-
-                if (session == null)
+                if (string.IsNullOrWhiteSpace(userId))
                 {
-                    return NotFound("No active session");
+                    return ApiResponse<string>
+                        .Fail(["User ID not found in claims"])
+                        .ToUnauthorizedResult();
                 }
 
-                return Ok(new
+                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
+                if (session == null)
+                {
+                    return ApiResponse<string>
+                        .Fail(["No active session"])
+                        .ToNotFoundResult();
+                }
+
+                var response = new
                 {
                     session.TokenID,
                     session.RefreshTokenExpiry,
                     session.AccessTokenJti
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Session retrieved")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -76,27 +92,50 @@ namespace WEB.AUTHENTICATION.Controllers
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var user = await _userService.GetUserByIdAsync(userId);
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return ApiResponse<string>
+                        .Fail(["User ID not found in claims"])
+                        .ToUnauthorizedResult();
+                }
 
+                var user = await _userService.GetUserByIdAsync(userId);
+                if (user == null)
+                {
+                    return ApiResponse<string>
+                        .Fail(["User not found"])
+                        .ToNotFoundResult();
+                }
+
+                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
                 if (session == null)
-                    return Unauthorized("No active session");
+                {
+                    return ApiResponse<string>
+                        .Fail(["No active session"])
+                        .ToUnauthorizedResult();
+                }
 
                 var newToken = _tokenService.GenerateAccessToken(user);
                 var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
 
                 await _tokenLifecycleService.UpdateAccessTokenJtiAsync(session.TokenID, newJti);
 
-                return Ok(new
+                var response = new
                 {
                     AccessToken = newToken.accessToken,
                     TokenId = session.TokenID,
                     ExpiresIn = newToken.expiresIn
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Session refreshed")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -119,7 +158,11 @@ namespace WEB.AUTHENTICATION.Controllers
             {
                 var session = await _tokenLifecycleService.GetByTokenIdAsync(tokenId, ct);
                 if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
-                    return Unauthorized("Invalid or expired session");
+                {
+                    return ApiResponse<string>
+                        .Fail(["Invalid or expired session"])
+                        .ToUnauthorizedResult();
+                }
 
                 var user = session.User;
                 var newToken = _tokenService.GenerateAccessToken(user);
@@ -127,16 +170,22 @@ namespace WEB.AUTHENTICATION.Controllers
 
                 await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newJti, ct);
 
-                return Ok(new
+                var response = new
                 {
                     AccessToken = newToken.accessToken,
                     TokenId = tokenId,
                     ExpiresIn = newToken.expiresIn
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Session created")
+                    .ToOkResult();
             }
             catch
             {
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
     }
