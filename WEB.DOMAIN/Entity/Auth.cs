@@ -5,6 +5,7 @@ namespace WEB.DOMAIN.Entity
     public class Auth : IEntity
     {
         public Guid AuthID { get; set; }
+        public Guid ID => AuthID;
         public Guid UserID { get; set; }
         public string Username { get; set; }
         public string PasswordHash { get; set; }

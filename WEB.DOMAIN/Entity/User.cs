@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WEB.DOMAIN.Interface;
+﻿using WEB.DOMAIN.Interface;
 
 namespace WEB.DOMAIN.Entity
 {
     public class User : BaseEntity, IEntity
     {
         public Guid UserID { get; set; }
+        public Guid ID => UserID;
         public Guid RoleID { get; set; }
         public Role Role { get; set; }
 

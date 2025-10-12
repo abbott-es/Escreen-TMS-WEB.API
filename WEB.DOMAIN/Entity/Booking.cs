@@ -5,6 +5,7 @@ namespace WEB.DOMAIN.Entity
     public class Booking : BaseEntity, IEntity
     {
         public Guid BookingID { get; set; }
+        public Guid ID => BookingID;
         public Guid ClientID { get; set; }
         public Guid LocationID { get; set; }
         public Guid TruckID { get; set; }

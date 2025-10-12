@@ -23,7 +23,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response containing the entity or a not found result.</returns>
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
+        public virtual async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
         {
             var result = await _genericService.GetByIdAsync(id, ct);
             return result.Match<IActionResult>(
@@ -43,7 +43,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response containing the list of entities or a not found result.</returns>
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
+        public virtual async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
         {
             var result = await _genericService.GetAllAsync(ct, includes);
             return result.Match<IActionResult>(
@@ -63,7 +63,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] T entity, CancellationToken ct = default)
+        public virtual async Task<IActionResult> Create([FromBody] T entity, CancellationToken ct = default)
         {
             var result = await _genericService.AddAsync(entity, ct);
             return result.Match<IActionResult>(
@@ -83,7 +83,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPut]
-        public async Task<IActionResult> Update([FromBody] T entity, CancellationToken ct = default)
+        public virtual async Task<IActionResult> Update([FromBody] T entity, CancellationToken ct = default)
         {
             var result = await _genericService.UpdateAsync(entity, ct);
             return result.Match<IActionResult>(
@@ -103,7 +103,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating how many entities were deleted or failure.</returns>
         [HttpDelete]
-        public async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
+        public virtual async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
         {
             if (ids == null || !ids.Any())
             {
@@ -114,11 +114,11 @@ namespace WEB.API.Controllers
 
             var result = await _genericService.DeleteListAsync(ids, ct);
             return result.Match<IActionResult>(
-                err => ApiResponse<string>
-                    .Fail(["Deletion failed"])
-                    .ToBadRequestResult(),
-                _ => ApiResponse<object>
-                    .Ok(new { DeletedCount = ids.Count() }, "Entities deleted")
+                Left: error => ApiResponse<string>
+                    .Fail([error], "Deletion failed")
+                    .ToNotFoundResult(),
+                Right: _ => ApiResponse<object>
+                    .Ok(new { DeletedCount = ids.Count() },"Entities deleted")
                     .ToOkResult()
             );
         }

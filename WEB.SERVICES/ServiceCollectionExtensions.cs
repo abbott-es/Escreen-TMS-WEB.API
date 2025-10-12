@@ -45,8 +45,8 @@ namespace WEB.SERVICES
             services.AddHttpContextAccessor(); // Required for accessing HttpContext
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            services.AddScoped(typeof(IBaseEntityRepository<>), typeof(BaseEntityRepository<>));
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IUserRepository, UserRepository>();
             services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
@@ -54,6 +54,7 @@ namespace WEB.SERVICES
             services.AddTransient<UserWithoutAuthResolver>();
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IClientService, ClientService>();
 
             return services;
         }
