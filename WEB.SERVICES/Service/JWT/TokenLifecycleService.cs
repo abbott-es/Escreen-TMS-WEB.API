@@ -212,7 +212,9 @@ namespace WEB.SERVICES.Service.JWT
                     return await _tokenRepository
                         .Query(asNoTracking: true)
                         .Include(t => t.User)
-                        .ThenInclude(u => u.Role)
+                            .ThenInclude(u => u.Role)
+                        .Include(t => t.User)
+                            .ThenInclude(u => u.Auth)
                         .FirstOrDefaultAsync(t => t.TokenID == tokenId, ct);
                 }, ct);
             }

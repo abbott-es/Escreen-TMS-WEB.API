@@ -1,6 +1,8 @@
-﻿namespace WEB.DOMAIN.Entity
+﻿using WEB.DOMAIN.Interface;
+
+namespace WEB.DOMAIN.Entity
 {
-    public class BookingStatusHistory
+    public class BookingStatusHistory : IEntity
     {
         public Guid StatusID { get; set; }
         public Guid BookingID { get; set; }

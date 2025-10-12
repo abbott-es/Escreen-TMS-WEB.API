@@ -1,5 +1,4 @@
-﻿
-using AutoMapper;
+﻿using AutoMapper;
 using WEB.DOMAIN.Entity;
 using WEB.SERVICES.DTO;
 
