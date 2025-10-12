@@ -61,7 +61,6 @@ namespace WEB.SERVICES
         //This keeps the shared project generic service
         public static IServiceCollection AddGenericService(this IServiceCollection services)
         {
-            services.AddScoped<IGenericService<UserDto>, UserService>();
             services.AddScoped(typeof(IGenericService<RoleDto>), typeof(GenericService<Role, RoleDto>));
             services.AddScoped(typeof(IGenericService<ClientDto>), typeof(GenericService<Client, ClientDto>));
             return services;

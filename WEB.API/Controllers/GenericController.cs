@@ -16,6 +16,12 @@ namespace WEB.API.Controllers
             _genericService = genericService;
         }
 
+        /// <summary>
+        /// Retrieves a single entity by its unique identifier.
+        /// </summary>
+        /// <param name="id">The GUID of the entity to retrieve.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response containing the entity or a not found result.</returns>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
         {
@@ -30,6 +36,12 @@ namespace WEB.API.Controllers
             );
         }
 
+        /// <summary>
+        /// Retrieves all entities, optionally including related navigation properties.
+        /// </summary>
+        /// <param name="includes">An array of navigation property paths to include.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response containing the list of entities or a not found result.</returns>
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
         {
@@ -44,6 +56,12 @@ namespace WEB.API.Controllers
             );
         }
 
+        /// <summary>
+        /// Creates a new entity.
+        /// </summary>
+        /// <param name="entity">The entity to create.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response indicating success or failure.</returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] T entity, CancellationToken ct = default)
         {
@@ -58,6 +76,12 @@ namespace WEB.API.Controllers
             );
         }
 
+        /// <summary>
+        /// Updates an existing entity.
+        /// </summary>
+        /// <param name="entity">The entity with updated data.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response indicating success or failure.</returns>
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] T entity, CancellationToken ct = default)
         {
@@ -72,6 +96,12 @@ namespace WEB.API.Controllers
             );
         }
 
+        /// <summary>
+        /// Deletes a list of entities by their IDs.
+        /// </summary>
+        /// <param name="ids">The list of GUIDs representing entities to delete.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response indicating how many entities were deleted or failure.</returns>
         [HttpDelete]
         public async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
         {
