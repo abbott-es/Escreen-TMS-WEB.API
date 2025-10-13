@@ -1,17 +1,19 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Interfaces;
+using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
+using WEB.GATEWAY.Services;
 using WEB.UTILITY.Logger;
-using System.Net.Http;
-using System.Net;
+using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 
 // Load configuration and create builder
@@ -38,7 +40,7 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 // Setup Reverse Proxy
 Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
-
+builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
 {
     var handler = new SocketsHttpHandler
@@ -97,7 +99,8 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
-//builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
+builder.Services.AddSingleton<ProxyConfigServiceProvider>();
+builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
 builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
 builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
@@ -107,8 +110,8 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
-app.UseMiddleware<ReverseProxyMiddleware>();
 app.MapReverseProxy();
+//app.UseMiddleware<ReverseProxyMiddleware>();
 
 await app.RunAsync();
 await Log.CloseAndFlushAsync();

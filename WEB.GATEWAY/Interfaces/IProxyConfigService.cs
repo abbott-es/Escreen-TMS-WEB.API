@@ -10,10 +10,10 @@ public interface IProxyConfigService
     /// Get Config Routes
     /// </summary>
     /// <returns>List of Route Config</returns>
-    Task<IReadOnlyList<RouteConfig>> GetRoutesAsync();
+    Task<IReadOnlyDictionary<string, RouteConfig>> GetRoutesAsync();
     /// <summary>
     /// Get Config Clusters
     /// </summary>
     /// <returns>List of Cluster Config</returns>
-    Task<IReadOnlyList<ClusterConfig>> GetClustersAsync();
+    Task<IReadOnlyDictionary<string, ClusterConfig>> GetClustersAsync();
 }

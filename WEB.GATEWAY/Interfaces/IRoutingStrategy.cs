@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Model;
 
 namespace WEB.GATEWAY.Interfaces;
@@ -11,5 +12,5 @@ public interface IRoutingStrategy
     /// </summary>
     /// <param name="feature">Current configuration on current request</param>
     /// <returns>Cluster destination state</returns>
-    ValueTask<DestinationState?> SelectDestinationAsync(IReverseProxyFeature feature);
+    ValueTask<DestinationState?> SelectDestinationAsync(ClusterConfig feature);
 }

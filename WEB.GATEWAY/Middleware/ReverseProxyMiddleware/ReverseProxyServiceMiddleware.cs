@@ -16,6 +16,7 @@ public class ReverseProxyMiddleware
     private readonly IRateLimitingStrategy _rateLimitingStrategy;
     private readonly IErrorHandlingStrategy _errorHandlingStrategy;
     private readonly IForwardingStrategy _forwardingStrategy;
+    private readonly IProxyConfigService _service;
     private readonly IAppLogger<ReverseProxyMiddleware> _logger;
 
     public ReverseProxyMiddleware(
@@ -24,6 +25,7 @@ public class ReverseProxyMiddleware
         IRateLimitingStrategy rateLimitingStrategy,
         IErrorHandlingStrategy errorHandlingStrategy,
         IForwardingStrategy forwardingStrategy,
+        IProxyConfigService service,
         IAppLogger<ReverseProxyMiddleware> logger)
     {
         _next = next;
@@ -31,37 +33,56 @@ public class ReverseProxyMiddleware
         _rateLimitingStrategy = rateLimitingStrategy;
         _errorHandlingStrategy = errorHandlingStrategy;
         _forwardingStrategy = forwardingStrategy;
+        _service = service;
         _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var proxyFeature = context.Features.Get<Yarp.ReverseProxy.Model.IReverseProxyFeature>();
+        var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
 
-        if (proxyFeature == null)
+        if (string.IsNullOrWhiteSpace(path))
         {
-            _logger.LogDebug("ReverseProxyFeature is missing in the HttpContext. Skipping proxying.");
+            _logger.LogDebug("Empty routes");
             await _next(context);
-            _logger.LogDebug("Returned from next middleware.");
             return;
         }
+    
+        var method = context.Request.Method;
+        var routes = await _service.GetRoutesAsync();
 
-        var destination = proxyFeature.ProxiedDestination ?? await _routingStrategy.SelectDestinationAsync(proxyFeature);
+        var matchedRoute = routes.Values.FirstOrDefault(r =>
+            r.Match?.Path is string matchPath &&
+            path.StartsWith(matchPath.TrimEnd('*'), StringComparison.OrdinalIgnoreCase) &&
+            (r.Match.Methods == null || r.Match.Methods.Contains(method, StringComparer.OrdinalIgnoreCase))
+        );
+
+        if (matchedRoute == null)
+        {
+            _logger.LogDebug("NO matching routes");
+            await _next(context);
+        }
+
+        var clusters = await _service.GetClustersAsync();
+
+        var matchedCluster =clusters.Values.FirstOrDefault(c => c.ClusterId == matchedRoute?.ClusterId);
+        if (matchedCluster == null)
+        {
+            _logger.LogDebug("No matching cluster for that route");
+            await _next(context);
+        }
+
+        var destination = await _routingStrategy.SelectDestinationAsync(matchedCluster);
 
         if (destination == null)
         {
-            _logger.LogDebug("No destination found for {Route}.", proxyFeature.Route.Config.ToString());
+            _logger.LogDebug("No destination found for {Route}.", matchedRoute?.Match?.Path!);
             await _errorHandlingStrategy.HandleMissingDestinationAsync(context);
             return;
         }
 
-        var allowed = await _rateLimitingStrategy.EnforceAsync(context, proxyFeature.Route);
 
-        if (!allowed)
-        {
-            _logger.LogDebug($"Rate limit policy: {proxyFeature.Route.Config.Metadata?.GetValueOrDefault(Constants.RATE_LIMIT_POLICY_METADATA_KEY) ?? "unknown"} is not allowed for {proxyFeature.Route.Config.Match.Path}.");
-            return;
-        }
+      //  var allowed = await _rateLimitingStrategy.EnforceAsync(context, proxyFeature.Route);
 
         var error = await _forwardingStrategy.ForwardAsync(context, destination);
 

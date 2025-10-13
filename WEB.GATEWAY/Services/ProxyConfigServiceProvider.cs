@@ -26,16 +26,16 @@ namespace WEB.GATEWAY.Services
                 _config.SignalChange();
             });
         }
-
+        
         public IProxyConfig GetConfig()
         {
-            return _config;
+            return null;
         }
 
         /// <summary>
         /// Get Routes from Proxy Config Service Provider
         /// </summary>
-        public Task<IReadOnlyList<RouteConfig>> GetRoutesAsync()
+        public Task<IReadOnlyDictionary<string, RouteConfig>> GetRoutesAsync()
         {
             return Task.FromResult(_config.Routes);
         }
@@ -43,7 +43,7 @@ namespace WEB.GATEWAY.Services
         /// <summary>
         /// Get Clusters from Proxy Config Service Provider
         /// </summary>
-        public Task<IReadOnlyList<ClusterConfig>> GetClustersAsync()
+        public Task<IReadOnlyDictionary<string, ClusterConfig>> GetClustersAsync()
         {
             return Task.FromResult(_config.Clusters);
         }
@@ -54,18 +54,20 @@ namespace WEB.GATEWAY.Services
         private static InMemoryConfig BuildConfig(ReverseProxy data)
         {
             // Defensive copy for immutability
-            var routes = data.Routes != null ? new List<RouteConfig>(data.Routes) : [];
-            var clusters = data.Clusters != null ? new List<ClusterConfig>(data.Clusters) : [];
+            var routes = data.Routes != null && data.Routes.Count > 0
+                ? new Dictionary<string, RouteConfig>(data.Routes)
+                : new Dictionary<string, RouteConfig>();
+            var clusters = data.Clusters != null && data.Clusters.Count > 0 ? new Dictionary<string, ClusterConfig>(data.Clusters) : new Dictionary<string, ClusterConfig>();
             return new InMemoryConfig(routes, clusters);
         }
 
         /// <summary>
         /// Implements store for Routes and Clusters
         /// </summary>
-        private sealed class InMemoryConfig(IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) : IProxyConfig
+        private sealed class InMemoryConfig(IReadOnlyDictionary<string, RouteConfig> routes, IReadOnlyDictionary<string, ClusterConfig> clusters) 
         {
-            public IReadOnlyList<RouteConfig> Routes { get; } = routes;
-            public IReadOnlyList<ClusterConfig> Clusters { get; } = clusters;
+            public IReadOnlyDictionary<string, RouteConfig> Routes { get; } = routes;
+            public IReadOnlyDictionary<string, ClusterConfig> Clusters { get; } = clusters;
             private CancellationTokenSource _cts = new();
 
             public IChangeToken ChangeToken => new CancellationChangeToken(_cts.Token);
