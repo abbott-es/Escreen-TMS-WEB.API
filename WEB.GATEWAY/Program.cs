@@ -1,14 +1,15 @@
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Threading.RateLimiting;
+using System.Threading.Tasks;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
@@ -16,6 +17,7 @@ using WEB.GATEWAY.Services;
 using WEB.UTILITY.Logger;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
+using Yarp.ReverseProxy.Transforms;
 
 // Load configuration and create builder
 var builder = WebApplication.CreateBuilder(args);
@@ -40,8 +42,59 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 
 // Setup Reverse Proxy
 Log.ForContext<Program>().Information("Setting up Reverse Proxy");
-builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+
 builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+//.AddTransforms(builderContext =>
+//{
+//    builderContext.AddRequestTransform(transformContext =>
+//    {
+//        var context = transformContext.HttpContext;
+//        var headers = transformContext.ProxyRequest.Headers;
+
+//        // Safely get values
+//        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+//        var host = context.Request.Host.Value;
+//        var scheme = context.Request.Scheme;
+//        var pathBase = context.Request.PathBase.Value ?? string.Empty;
+//        var method = context.Request.Method;
+//        var query = context.Request.QueryString.Value ?? string.Empty;
+//        var path = context.Request.Path.Value ?? string.Empty;
+
+//        // Add headers only if not already present
+//        if (!string.IsNullOrEmpty(remoteIp) && !headers.Contains("X-Forwarded-For"))
+//        {
+//            headers.TryAddWithoutValidation("X-Forwarded-For", remoteIp);
+//        }
+
+//        if (!headers.Contains("X-Forwarded-Host"))
+//        {
+//            headers.TryAddWithoutValidation("X-Forwarded-Host", host);
+//        }
+
+//        if (!headers.Contains("X-Forwarded-Proto"))
+//            headers.TryAddWithoutValidation("X-Forwarded-Proto", scheme);
+
+//        if (!headers.Contains("X-Forwarded-PathBase"))
+//            headers.TryAddWithoutValidation("X-Forwarded-PathBase", pathBase);
+
+//        if (!headers.Contains("X-Forwarded-Method"))
+//            headers.TryAddWithoutValidation("X-Forwarded-Method", method);
+
+//        if (!headers.Contains("X-Forwarded-Scheme"))
+//            headers.TryAddWithoutValidation("X-Forwarded-Scheme", scheme);
+
+//        if (!headers.Contains("X-Forwarded-Query"))
+//            headers.TryAddWithoutValidation("X-Forwarded-Query", query);
+
+//        if (!headers.Contains("X-Forwarded-Path"))
+//            headers.TryAddWithoutValidation("X-Forwarded-Path", path);
+
+//        return ValueTask.CompletedTask;
+//    });
+//});
+
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
 {
     var handler = new SocketsHttpHandler
@@ -105,10 +158,8 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 builder.Services.AddSingleton<RateLimitConfigServiceProvider>();
-builder.Services.AddSingleton<IRateLimitService>(sp => sp.GetRequiredService<RateLimitConfigServiceProvider>());
 builder.Services.AddSingleton<IRateLimitConfigServiceProvider>(sp => sp.GetRequiredService<RateLimitConfigServiceProvider>());
 builder.Services.AddSingleton<ProxyConfigServiceProvider>();
-builder.Services.AddSingleton<IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
 builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
@@ -119,8 +170,8 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
-app.MapReverseProxy();
 app.UseMiddleware<ReverseProxyMiddleware>();
+app.MapReverseProxy();
 
 await app.RunAsync();
 await Log.CloseAndFlushAsync();

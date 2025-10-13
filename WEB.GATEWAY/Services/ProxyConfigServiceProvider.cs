@@ -12,7 +12,7 @@ namespace WEB.GATEWAY.Services
     /// <summary>
     /// Implementing a Reverse Proxy Config Service Provider for dynamic proxy setup
     /// </summary>
-    public sealed class ProxyConfigServiceProvider : IProxyConfigProvider, IProxyConfigService
+    public sealed class ProxyConfigServiceProvider :  IProxyConfigService
     {
         private volatile InMemoryConfig _config;
 
@@ -27,11 +27,6 @@ namespace WEB.GATEWAY.Services
             });
         }
         
-        public IProxyConfig GetConfig()
-        {
-            return null;
-        }
-
         /// <summary>
         /// Get Routes from Proxy Config Service Provider
         /// </summary>
