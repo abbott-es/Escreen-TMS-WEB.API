@@ -7,6 +7,7 @@ namespace WEB.SERVICES.Service
     public class UserContextService : IUserContextService
     {
         private readonly IHttpContextAccessor _accessor;
+        private const string UserAgentHeader = "User-Agent";
 
         public UserContextService(IHttpContextAccessor accessor)
         {
@@ -20,13 +21,9 @@ namespace WEB.SERVICES.Service
         {
             get
             {
-                var userAgent = _accessor.HttpContext?.Request?.Headers["User-Agent"].ToString();
-                if (string.IsNullOrWhiteSpace(userAgent))
-                    return "Unknown Device";
-
-                return userAgent;
+                var userAgent = _accessor.HttpContext?.Request?.Headers[UserAgentHeader].ToString();
+                return string.IsNullOrWhiteSpace(userAgent) ? "Unknown Device" : userAgent;
             }
         }
     }
-
 }
