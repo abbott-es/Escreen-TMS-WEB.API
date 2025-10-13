@@ -39,9 +39,9 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 // Setup Reverse Proxy
 Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
-builder.Services.AddSingleton<ProxyConfigServiceProvider>();
-builder.Services.AddSingleton<Yarp.ReverseProxy.Configuration.IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
-builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
+// builder.Services.AddSingleton<ProxyConfigServiceProvider>();
+// builder.Services.AddSingleton<Yarp.ReverseProxy.Configuration.IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
+// builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
@@ -59,14 +59,10 @@ builder.Services.AddSingleton(new ForwarderRequestConfig
 {
     ActivityTimeout = TimeSpan.FromSeconds(360)
 });
-builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
-builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
-builder.Services.AddSingleton<IErrorHandlingStrategy, DefaultErrorHandlingStrategy>();
-
 // Setup Rate Limiting
 builder.Services.Configure<RateLimitingConfig>(builder.Configuration.GetSection("RateLimiting"));
-builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
-
+builder.Services.AddOptions<RateLimitingConfig>().Bind(builder.Configuration.GetSection("RateLimiting"));
+builder.Services.AddSingleton<RateLimiter>();
 // Register Rate Limiter Policies
 builder.Services.AddRateLimiter(options =>
 {
@@ -101,6 +97,12 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
+//builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
+builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
+builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
+builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
+builder.Services.AddSingleton<IErrorHandlingStrategy, DefaultErrorHandlingStrategy>();
+
 
 var app = builder.Build();
 
