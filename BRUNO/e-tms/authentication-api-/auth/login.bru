@@ -6,12 +6,23 @@ meta {
 
 post {
   url: {{BASE_URL}}/authentication-api/api/sso/authentication/login
-  body: none
+  body: json
   auth: bearer
+}
+
+params:query {
+  : 
 }
 
 headers {
   Authorization: {{bearerToken}}
+}
+
+body:json {
+  {
+   "Username": "test",
+    "Password": "test"
+  }
 }
 
 settings {

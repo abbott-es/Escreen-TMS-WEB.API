@@ -1,0 +1,15 @@
+meta {
+  name: session
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/authentication-api/api/sso/session/
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
