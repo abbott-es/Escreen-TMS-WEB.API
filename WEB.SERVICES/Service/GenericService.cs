@@ -1,8 +1,6 @@
-﻿using System.Linq.Expressions;
-using AutoMapper;
+﻿using AutoMapper;
 using FluentValidation;
 using LanguageExt;
-using Microsoft.EntityFrameworkCore;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;

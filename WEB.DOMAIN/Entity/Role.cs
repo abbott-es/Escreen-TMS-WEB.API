@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WEB.DOMAIN.Interface;
+﻿using WEB.DOMAIN.Interface;
 
 namespace WEB.DOMAIN.Entity
 {
-    public class Role : IEntity
+    public class Role : BaseEntity, IEntity
     {
         public Guid RoleID { get; set; }
+        public Guid ID => RoleID;
         public string RoleName { get; set; }
 
         public ICollection<User> Users { get; set; }
     }
-
 }

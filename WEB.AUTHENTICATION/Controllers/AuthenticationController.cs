@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
-using WEB.UTILITY.Logger;
+using WEB.UTILITY.Helper;
+using WEB.UTILITY.Extension;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -16,19 +17,16 @@ namespace WEB.AUTHENTICATION.Controllers
         private readonly IAuthService _authService;
         private readonly ITokenLifecycleService _tokenLifecycleService;
         private readonly IValidator<LogoutDto> _logoutValidator;
-        private readonly IAppLogger<AuthenticationController> _appLogger;
 
         public AuthenticationController(ITokenService tokenService,
             IAuthService authService,
             ITokenLifecycleService tokenLifecycleService,
-            IValidator<LogoutDto> logoutValidator,
-            IAppLogger<AuthenticationController> appLogger)
+            IValidator<LogoutDto> logoutValidator)
         {
             _tokenService = tokenService;
             _authService = authService;
             _tokenLifecycleService = tokenLifecycleService;
             _logoutValidator = logoutValidator;
-            _appLogger = appLogger;
         }
 
         /// <summary>
@@ -40,48 +38,72 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("create-auth")]
         public async Task<IActionResult> CreateUserHash([FromBody] UserDto authDTO, CancellationToken ct = default)
         {
-            var result = await _authService.CreateUserAsync(authDTO, ct);
-            return result.Match<IActionResult>(
-                Left: error => BadRequest(new { Error = error }),
-                Right: id => CreatedAtAction(
-                    nameof(CreateUserHash),   // action name
-                    new { id },        // route values must match {id}
-                    authDTO            // response body
-                )
-            );
+            try
+            {
+                var result = await _authService.CreateUserAsync(authDTO, ct);
+                return result.Match<IActionResult>(
+                    Left: error => ApiResponse<string>
+                        .Fail([error], "User creation failed")
+                        .ToBadRequestResult(),
+
+                    Right: id => ApiResponse<UserDto>
+                        .Ok(authDTO, "User created")
+                        .ToCreatedResult()
+                );
+            }
+            catch
+            {
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
+            }
         }
 
         /// <summary>
         /// Authenticates a user and returns access and refresh tokens.
         /// </summary>
         /// <param name="authDto">The login credentials.</param>
+        /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK with tokens, 401 Unauthorized if credentials are invalid.</returns>
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] AuthDto authDto)
+        public async Task<IActionResult> Login([FromBody] AuthDto authDto, CancellationToken ct = default)
         {
             try
             {
-                var user = await _authService.ValidateCredentialsAsync(authDto.Username, authDto.Password);
-                if (user == null) return Unauthorized("Invalid credentials");
-
+                var user = await _authService.ValidateCredentialsAsync(authDto.Username, authDto.Password, ct);
+                if (user == null)
+                    return ApiResponse<string>
+                        .Fail(["Invalid credentials"])
+                        .ToUnauthorizedResult();
+                // Log LastLogin timestamp
+                await _authService.UpdateLastLoginAsync(authDto.Username, ct);
                 var token = _tokenService.GenerateAccessToken(user);
-                var jti = new JwtSecurityTokenHandler().ReadJwtToken(token.accessToken).Id;
 
-                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti);
+                if (!JwtHelper.TryExtractJti(token.accessToken, out var jti))
+                    return ApiResponse<string>
+                        .Fail(["Failed to parse token identifier"])
+                        .ToInternalServerErrorResult();
 
-                return Ok(new
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, ct);
+
+                var response = new
                 {
                     AccessToken = token.accessToken,
                     RefreshToken = tokenRecord.RefreshToken,
                     TokenId = tokenRecord.TokenID,
                     ExpiresIn = token.expiresIn
-                });
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Login successful")
+                    .ToOkResult();
             }
-            catch (Exception err)
+            catch
             {
-                _appLogger.LogError(err, "Internal Server Error");
-                return StatusCode(500, "Internal Server Error");
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
             }
         }
 
@@ -89,60 +111,105 @@ namespace WEB.AUTHENTICATION.Controllers
         /// Refreshes an expired access token using a valid refresh token.
         /// </summary>
         /// <param name="refreshToken">The refresh token request.</param>
+        /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK with new tokens, 401 Unauthorized if token is invalid or expired.</returns>
         [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken, CancellationToken ct = default)
         {
-            var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
-            if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
-                return Unauthorized("Invalid or expired refresh token");
-
-            var newToken = _tokenService.GenerateAccessToken(token.User);
-            var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
-
-            token.AccessTokenJti = newJti;
-            await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID);
-
-            return Ok(new
+            try
             {
-                AccessToken = newToken.accessToken,
-                RefreshToken = token.RefreshToken,
-                TokenId = token.TokenID,
-                ExpiresIn = newToken.expiresIn
-            });
+                var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
+                if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
+                    return ApiResponse<string>
+                        .Fail(["Invalid or expired refresh token"])
+                        .ToUnauthorizedResult();
+
+                var newToken = _tokenService.GenerateAccessToken(token.User);
+                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
+
+                token.AccessTokenJti = newJti;
+                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, ct);
+
+                var response = new
+                {
+                    AccessToken = newToken.accessToken,
+                    RefreshToken = token.RefreshToken,
+                    TokenId = token.TokenID,
+                    ExpiresIn = newToken.expiresIn
+                };
+
+                return ApiResponse<object>
+                    .Ok(response, "Token refreshed")
+                    .ToOkResult();
+            }
+            catch
+            {
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
+            }
         }
 
         /// <summary>
         /// Revokes access token by its ID.
         /// </summary>
         /// <param name="tokenId">The request containing the token ID to revoke.</param>
+        /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK if the token was successfully revoked.</returns>
         [HttpPost("revoke")]
-        public async Task<IActionResult> RevokeToken([FromBody] Guid tokenId)
+        public async Task<IActionResult> RevokeToken([FromBody] Guid tokenId, CancellationToken ct = default)
         {
-            await _tokenLifecycleService.RevokeTokenAsync(tokenId);
-            return Ok("Token revoked");
+            try
+            {
+                await _tokenLifecycleService.RevokeTokenAsync(tokenId);
+                return ApiResponse<string>
+                    .Ok(string.Empty,"Token revoked")
+                    .ToOkResult();
+            }
+            catch
+            {
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
+            }
         }
 
         /// <summary>
         /// Logout by the access token and refresh token.
         /// </summary>
         /// <param name="request">The request containing the access and refresh token to logout.</param>
+        /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK if the token was successfully logout.</returns>
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutDto request, CancellationToken ct = default)
         {
-            var validate = await _logoutValidator.ValidateAsync(request, ct);
-            if (!validate.IsValid)
+            try
             {
-                var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                return BadRequest(errors);
-            }
-            var success = await _tokenLifecycleService.RevokeByAccessAndRefreshTokenAsync(request.AccessToken, request.RefreshToken);
-            if (!success)
-                return Unauthorized("Invalid or already revoked token.");
+                var validate = await _logoutValidator.ValidateAsync(request, ct);
+                if (!validate.IsValid)
+                {
+                    var errors = validate.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}").ToList();
+                    return ApiResponse<string>
+                        .Fail(errors, "Validation failed")
+                        .ToBadRequestResult();
+                }
 
-            return Ok(new { message = "Logout successful." });
+                var success = await _tokenLifecycleService.RevokeByAccessAndRefreshTokenAsync(request.AccessToken, request.RefreshToken);
+                if (!success)
+                    return ApiResponse<string>
+                        .Fail(["Invalid or already revoked token"])
+                        .ToUnauthorizedResult();
+
+                return ApiResponse<string>
+                    .Ok(string.Empty,"Logout successful")
+                    .ToOkResult();
+            }
+            catch
+            {
+                return ApiResponse<string>
+                    .Fail(["Internal Server Error"])
+                    .ToInternalServerErrorResult();
+            }
         }
     }
 }

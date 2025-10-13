@@ -26,8 +26,12 @@ namespace WEB.SERVICES
         {
             services.AddAutoMapper(cfg =>
             {
-                cfg.AddProfile<MapProfile>();
+                cfg.AddProfile<AuthProfile>();
+                cfg.AddProfile<UserProfile>();
+                cfg.AddProfile<RoleProfile>();
+                cfg.AddProfile<ClientProfile>();
             });
+            services.AddTransient<IgnoreAuthInClientMapping>();
 
             services.AddMemoryCache();
             services.AddScoped<ITokenService, TokenService>();
@@ -41,14 +45,16 @@ namespace WEB.SERVICES
             services.AddHttpContextAccessor(); // Required for accessing HttpContext
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            services.AddScoped(typeof(IBaseEntityRepository<>), typeof(BaseEntityRepository<>));
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped<IUserRepository, UserRepository>();
             services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
             services.AddTransient<GetSessionResolver>();
+            services.AddTransient<UserWithoutAuthResolver>();
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IClientService, ClientService>();
 
             return services;
         }
@@ -56,7 +62,6 @@ namespace WEB.SERVICES
         //This keeps the shared project generic service
         public static IServiceCollection AddGenericService(this IServiceCollection services)
         {
-            services.AddScoped<IGenericService<UserDto>, UserService>();
             services.AddScoped(typeof(IGenericService<RoleDto>), typeof(GenericService<Role, RoleDto>));
             services.AddScoped(typeof(IGenericService<ClientDto>), typeof(GenericService<Client, ClientDto>));
             return services;
