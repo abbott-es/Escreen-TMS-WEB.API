@@ -94,7 +94,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseMiddleware<TraceIdInjectionMiddleware>();
 app.UseHttpsRedirection();
 app.UseMiddleware<TokenRevocationMiddleware>();
 app.UseAuthentication();

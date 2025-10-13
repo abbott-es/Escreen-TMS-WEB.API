@@ -1,16 +1,24 @@
 ﻿using AutoMapper;
+using Dapper;
 using FluentValidation;
+using LanguageExt;
+using LanguageExt.Pipes;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using WEB.DAL;
+using WEB.DAL.Repository;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security.ISecurity;
+using static Dapper.SqlMapper;
 
 namespace WEB.SERVICES.Service
 {
-    public sealed class UserService : BaseService<UserService>, IUserService
+    public sealed class UserService : GenericService<UserInfo, UserDto>, IUserService
     {
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<UserInfo> _userInfoRepository;
@@ -18,6 +26,7 @@ namespace WEB.SERVICES.Service
         private readonly IMapper _mapper;
         private readonly IValidator<UserDto> _validator;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppLogger<UserInfo> _logger;
         private readonly IRsaEncryptionService _rsaEncryptionService;
 
         public UserService(
@@ -25,17 +34,18 @@ namespace WEB.SERVICES.Service
             IRepository<UserInfo> userInfoRepository,
             IMapper mapper,
             IValidator<UserDto> validator,
-            IAppLogger<UserService> logger,
+            IAppLogger<UserInfo> logger,
             IRepository<Auth> authRepository,
             IRsaEncryptionService rsaEncryptionService,
             IRepository<User> userRepository
-        ) : base(logger)
+        ) : base(unitOfWork, userInfoRepository, mapper, validator, logger)
         {
             _userInfoRepository = userInfoRepository;
             _mapper = mapper;
             _validator = validator;
             _unitOfWork = unitOfWork;
             _rsaEncryptionService = rsaEncryptionService;
+            _logger = logger;
             _authRepository = authRepository;
             _userRepository = userRepository;
         }
@@ -46,40 +56,17 @@ namespace WEB.SERVICES.Service
                        .FirstOrDefault(u => u.Email == email);
             return user == null ? null : _mapper.Map<UserDto>(user);
         }
-
-        public async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        public async Task<User> GetUserByIdAsync(string userId, CancellationToken ct = default)
         {
-            try
+            return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
             {
-                var user = await _userRepository
-                        .Query(asNoTracking: true)
-                        .Include(x => x.Role)
-                        .Include(uf => uf.UserInfo)
-                        .Include(uf => uf.Auth)
-                        .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userID) && a.IsActive, ct);
-                return user;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
-                throw;
-            }
-            
-        }
-
-        public async Task<UserDto> GetUserDtoByIdAsync(string userID, CancellationToken ct = default)
-        {
-            try
-            {
-                var user = await GetUserByIdAsync(userID, ct);
-                return _mapper.Map<UserDto>(user);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
-                throw;
-            }
-
+                var auth = await _authRepository
+                    .Query(asNoTracking: true)
+                    .Include(a => a.User)
+                    .ThenInclude(x => x.Role)
+                    .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userId) && a.User.IsActive, ct);
+                return auth.User;
+            });
         }
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)

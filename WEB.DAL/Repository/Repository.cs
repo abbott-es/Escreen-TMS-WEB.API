@@ -1,13 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Linq.Expressions;
-using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
-using WEB.DOMAIN.Resolver;
 
 namespace WEB.DAL.Repository
 {
-    public class Repository<T> : IRepository<T> where T : class, IEntity
+    public class Repository<T> : IRepository<T> where T : class
     {
         protected readonly AppDbContext.WebApiDbContext _context;
         protected readonly DbSet<T> _dbSet;
@@ -56,9 +54,8 @@ namespace WEB.DAL.Repository
                 return;
 
             // Get matching entities
-            var keyName = EntityKeyResolver.GetMappedKeyPropertyName<T>();
             var entities = await _dbSet
-                .Where(e => EF.Property<Guid>(e, keyName) != Guid.Empty && ids.Contains(EF.Property<Guid>(e, keyName)))
+                .Where(e => EF.Property<Guid>(e, "Id") != Guid.Empty && ids.Contains(EF.Property<Guid>(e, "Id")))
                 .ToListAsync(ct);
 
             if (entities.Count == 0)
@@ -66,7 +63,6 @@ namespace WEB.DAL.Repository
 
             _dbSet.RemoveRange(entities);
         }
-
         public IQueryable<T> Query(bool asNoTracking = true)
         {
             return asNoTracking ? _dbSet.AsNoTracking() : _dbSet;

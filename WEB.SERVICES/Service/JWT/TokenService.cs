@@ -5,16 +5,15 @@ using System.Security.Cryptography;
 using System.Text;
 using WEB.DOMAIN.Entity;
 using WEB.SERVICES.IService;
-using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
 
 namespace WEB.SERVICES.Service.JWT
 {
-    public class TokenService : BaseService<TokenService>, ITokenService
+    public class TokenService : ITokenService
     {
         private readonly JwtSettings _settings;
 
-        public TokenService(JwtSettings settings, IAppLogger<TokenService> appLogger) : base(appLogger)
+        public TokenService(JwtSettings settings)
         {
             _settings = settings;
         }
@@ -45,7 +44,7 @@ namespace WEB.SERVICES.Service.JWT
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Not able to generate access token");
+                Console.Write(ex);
                 throw;
             }
         }

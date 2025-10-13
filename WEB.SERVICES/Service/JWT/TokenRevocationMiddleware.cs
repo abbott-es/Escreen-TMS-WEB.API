@@ -21,18 +21,19 @@ namespace WEB.SERVICES.Service.JWT
 
             if (!string.IsNullOrEmpty(token))
             {
-                await using var scope = _serviceProvider.CreateAsyncScope();
-                var tokenLifecycleService = scope.ServiceProvider.GetRequiredService<ITokenLifecycleService>();
-                var jti = tokenLifecycleService.GetJtiFromToken(token);
-
-                if (!string.IsNullOrEmpty(jti) && await tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("Access token has been revoked.");
-                    return;
+                    var tokenLifecycleService = scope.ServiceProvider.GetRequiredService<ITokenLifecycleService>();
+                    var jti = tokenLifecycleService.GetJtiFromToken(token);
+
+                    if (!string.IsNullOrEmpty(jti) && await tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsync("Access token has been revoked.");
+                        return;
+                    }
                 }
             }
-
             await _next(context);
         }
     }

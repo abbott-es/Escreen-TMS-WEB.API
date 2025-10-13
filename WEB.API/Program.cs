@@ -54,8 +54,6 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
     options.SchemaFilter<RandomGuidSchemaFilter>();
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
@@ -99,7 +97,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseMiddleware<TraceIdInjectionMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseMiddleware<TokenRevocationMiddleware>();
 app.UseAuthentication();

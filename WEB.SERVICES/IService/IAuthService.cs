@@ -8,6 +8,5 @@ namespace WEB.SERVICES.IService
     {
         Task<Either<string, Guid>> CreateUserAsync(UserDto authDTO, CancellationToken ct = default);
         Task<User?> ValidateCredentialsAsync(string username, string encryptedPassword, CancellationToken ct = default);
-        Task UpdateLastLoginAsync(string username, CancellationToken ct = default);
     }
 }

@@ -26,4 +26,5 @@ namespace WEB.DOMAIN.Config
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
+
 }

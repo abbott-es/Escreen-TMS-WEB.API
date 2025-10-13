@@ -9,15 +9,15 @@ namespace WEB.SERVICES.IService
 {
     public interface ITokenLifecycleService
     {
-        Task<UserToken> IssueTokenAsync(Guid userId, string jti, CancellationToken ct = default);
-        Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId, CancellationToken ct = default);
-        Task RevokeTokenAsync(Guid tokenId, CancellationToken ct = default);
-        Task<bool> IsAccessTokenRevokedAsync(string jti, CancellationToken ct = default);
-        Task<UserToken> GetByRefreshTokenAsync(string refreshToken, CancellationToken ct = default);
-        Task<UserToken?> GetActiveSessionAsync(Guid userId, CancellationToken ct = default);
-        Task UpdateAccessTokenJtiAsync(Guid tokenId, string newJti, CancellationToken ct = default);
-        Task<UserToken?> GetByTokenIdAsync(Guid tokenId, CancellationToken ct = default);
-        Task<bool> RevokeByAccessAndRefreshTokenAsync(string accessToken, string refreshToken, CancellationToken ct = default);
+        Task<UserToken> IssueTokenAsync(Guid userId, string jti);
+        Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId);
+        Task RevokeTokenAsync(Guid tokenId);
+        Task<bool> IsAccessTokenRevokedAsync(string jti);
+        Task<UserToken> GetByRefreshTokenAsync(string refreshToken);
+        Task<UserToken?> GetActiveSessionAsync(Guid userId);
+        Task UpdateAccessTokenJtiAsync(Guid tokenId, string newJti);
+        Task<UserToken?> GetByTokenIdAsync(Guid tokenId);
+        Task<bool> RevokeByAccessAndRefreshTokenAsync(string accessToken, string refreshToken);
         string? GetJtiFromToken(string token);
     }
 

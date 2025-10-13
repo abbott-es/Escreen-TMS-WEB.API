@@ -1,11 +1,15 @@
-﻿using WEB.DOMAIN.Interface;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using WEB.DOMAIN.Interface;
 
 namespace WEB.DOMAIN.Entity
 {
     public class UserToken : IEntity
     {
         public Guid TokenID { get; set; }
-        public Guid ID => TokenID;
         public Guid UserID { get; set; }
 
         public string RefreshToken { get; set; }
