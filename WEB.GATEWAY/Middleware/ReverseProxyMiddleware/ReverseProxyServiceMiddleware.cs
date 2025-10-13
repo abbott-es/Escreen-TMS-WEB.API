@@ -1,14 +1,15 @@
 using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using WEB.GATEWAY.Interfaces;
+using WEB.GATEWAY.Models;
 using WEB.UTILITY.Logger;
-using Yarp.ReverseProxy.Forwarder;
 
 namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
-
 public class ReverseProxyMiddleware
 {
     private readonly RequestDelegate _next;
@@ -17,6 +18,9 @@ public class ReverseProxyMiddleware
     private readonly IErrorHandlingStrategy _errorHandlingStrategy;
     private readonly IForwardingStrategy _forwardingStrategy;
     private readonly IProxyConfigService _service;
+    private readonly IMemoryCache _cache;
+    private readonly IOutputCacheService _outputCacheService;
+    private readonly IRateLimitConfigServiceProvider _rateLimitService;
     private readonly IAppLogger<ReverseProxyMiddleware> _logger;
 
     public ReverseProxyMiddleware(
@@ -26,6 +30,9 @@ public class ReverseProxyMiddleware
         IErrorHandlingStrategy errorHandlingStrategy,
         IForwardingStrategy forwardingStrategy,
         IProxyConfigService service,
+        IMemoryCache cache,
+        IOutputCacheService outputCacheService,
+        IRateLimitConfigServiceProvider rateLimitService,
         IAppLogger<ReverseProxyMiddleware> logger)
     {
         _next = next;
@@ -34,20 +41,83 @@ public class ReverseProxyMiddleware
         _errorHandlingStrategy = errorHandlingStrategy;
         _forwardingStrategy = forwardingStrategy;
         _service = service;
+        _outputCacheService = outputCacheService;
+        _cache = cache;
+        _rateLimitService = rateLimitService;
         _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+        try
+        {
+            var cachePolicyName = context.Request.Headers["X-Cache-Policy"].FirstOrDefault() ?? "ShortTerm";
+            var ratePolicyName = context.Request.Headers["X-RateLimit-Policy"].FirstOrDefault() ?? "balanced";
+            var clientId = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
+            // Rate limiting check
+            if (!_rateLimitService.IsRequestAllowed(ratePolicyName, clientId))
+            {
+                var retryAfter = _rateLimitService.GetPolicy(ratePolicyName)?.WindowSeconds.ToString() ?? "0";
+                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                context.Response.Headers["Retry-After"] = retryAfter;
+                await context.Response.WriteAsync("Rate limit exceeded.");
+                _logger.LogWarning($"Rate limit exceeded for client {clientId} using policy {ratePolicyName}");
+                return;
+            }
+
+            // Output caching check
+            var cachePolicy = _outputCacheService.GetPolicy(cachePolicyName);
+            if (cachePolicy != null)
+            {
+                var cacheKey = GenerateCacheKey(context, cachePolicy);
+                if (_cache.TryGetValue(cacheKey, out var cachedResponse))
+                {
+                    _logger.LogDebug("Serving response from cache.");
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync((string)cachedResponse);
+                    return;
+                }
+
+                var originalBodyStream = context.Response.Body;
+                using var memoryStream = new MemoryStream();
+                context.Response.Body = memoryStream;
+
+                await _next(context); // Proceed to next middleware
+
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                var responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
+                _cache.Set(cacheKey, responseBody, cachePolicy.Duration);
+
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                await memoryStream.CopyToAsync(originalBodyStream);
+            }
+            else
+            {
+                await _next(context);
+            }
+
+            // Routing logic
+            await HandleRoutingAsync(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled exception in ReverseProxyMiddleware.");
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsync("Internal server error.");
+        }
+    }
+
+    private async Task HandleRoutingAsync(HttpContext context)
+    {
+        var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(path))
         {
-            _logger.LogDebug("Empty routes");
+            _logger.LogDebug("Empty request path.");
             await _next(context);
             return;
         }
-    
+
         var method = context.Request.Method;
         var routes = await _service.GetRoutesAsync();
 
@@ -59,36 +129,24 @@ public class ReverseProxyMiddleware
 
         if (matchedRoute == null)
         {
-            _logger.LogDebug("NO matching routes");
+            _logger.LogDebug("No matching route found.");
             await _next(context);
-        }
-
-        var clusters = await _service.GetClustersAsync();
-
-        var matchedCluster =clusters.Values.FirstOrDefault(c => c.ClusterId == matchedRoute?.ClusterId);
-        if (matchedCluster == null)
-        {
-            _logger.LogDebug("No matching cluster for that route");
-            await _next(context);
-        }
-
-        var destination = await _routingStrategy.SelectDestinationAsync(matchedCluster);
-
-        if (destination == null)
-        {
-            _logger.LogDebug("No destination found for {Route}.", matchedRoute?.Match?.Path!);
-            await _errorHandlingStrategy.HandleMissingDestinationAsync(context);
             return;
         }
 
+        var clusters = await _service.GetClustersAsync();
+        var matchedCluster = clusters.Values.FirstOrDefault(c => c.ClusterId == matchedRoute.ClusterId);
 
-      //  var allowed = await _rateLimitingStrategy.EnforceAsync(context, proxyFeature.Route);
-
-        var error = await _forwardingStrategy.ForwardAsync(context, destination);
-
-        if (error != ForwarderError.None)
+        if (matchedCluster == null)
         {
-            await _errorHandlingStrategy.HandleForwardingErrorAsync(context, error);
+            _logger.LogDebug("No matching cluster found for route.");
+            await _next(context);
         }
+    }
+
+    private static string GenerateCacheKey(HttpContext context, OutputCachePolicy policy)
+    {
+        var keyBuilder = new StringBuilder($"{context.Request.Path}:{context.Request.Headers.UserAgent}:{context.Request.HttpContext.Connection.RemoteIpAddress}");
+        return keyBuilder.ToString();
     }
 }

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -57,6 +58,10 @@ builder.Services.AddSingleton(new ForwarderRequestConfig
     ActivityTimeout = TimeSpan.FromSeconds(360)
 });
 
+builder.Services.Configure<OutputCacheOptions>(builder.Configuration.GetSection("OutputCache"));
+builder.Services.AddSingleton<IOutputCacheService, OutputCacheService>();
+builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
+builder.Services.AddMemoryCache();
 // Setup Rate RateLiming Policies
 builder.Services.AddRateLimiter(options =>
 {
@@ -99,7 +104,11 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
+builder.Services.AddSingleton<RateLimitConfigServiceProvider>();
+builder.Services.AddSingleton<IRateLimitService>(sp => sp.GetRequiredService<RateLimitConfigServiceProvider>());
+builder.Services.AddSingleton<IRateLimitConfigServiceProvider>(sp => sp.GetRequiredService<RateLimitConfigServiceProvider>());
 builder.Services.AddSingleton<ProxyConfigServiceProvider>();
+builder.Services.AddSingleton<IProxyConfigProvider>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
 builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
@@ -111,7 +120,7 @@ var app = builder.Build();
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 app.MapReverseProxy();
-//app.UseMiddleware<ReverseProxyMiddleware>();
+app.UseMiddleware<ReverseProxyMiddleware>();
 
 await app.RunAsync();
 await Log.CloseAndFlushAsync();
