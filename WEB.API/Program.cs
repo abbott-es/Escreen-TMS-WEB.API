@@ -3,9 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using StackExchange.Redis.Extensions.Core.Abstractions;
+using StackExchange.Redis.Extensions.Core.Configuration;
+using StackExchange.Redis.Extensions.System.Text.Json;
 using System.Text;
 using WEB.API.SwaggerFilter;
 using WEB.SERVICES;
+using WEB.UTILITY.Caching;
 using WEB.UTILITY.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +45,33 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+});
+
+builder.Services.AddScoped<ICache>(s => new SafeCache(
+    new RedisCache(
+        s.GetService<IRedisDatabase>(),
+        s.GetService<IRedisClient>(),
+        s.GetService<ILogger<RedisCache>>()),
+    s.GetService<ILogger<SafeCache>>()));
+
+var username = builder.Configuration["Redis:Username"];
+var password = builder.Configuration["Redis:Password"];
+var keyPrefix = builder.Configuration["Redis:KeyPrefix"];
+builder.Services.AddStackExchangeRedisExtensions<SystemTextJsonSerializer>(new RedisConfiguration()
+{
+    Hosts = new RedisHost[]
+        {
+                new RedisHost
+                {
+                    Host = builder.Configuration["Redis:Host"],
+                    Port = int.Parse(builder.Configuration["Redis:Port"])
+                }
+        },
+    Ssl = bool.Parse(builder.Configuration["Redis:UseSsl"]),
+    User = !string.IsNullOrEmpty(username) ? username : null,
+    Password = !string.IsNullOrEmpty(password) ? password : null,
+    KeyPrefix = !string.IsNullOrEmpty(keyPrefix) ? $"{keyPrefix}:" : string.Empty,
+    SyncTimeout = int.Parse(builder.Configuration["Redis:SyncTimeout"])
 });
 
 builder.Services.AddEndpointsApiExplorer();
