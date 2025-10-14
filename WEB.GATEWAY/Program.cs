@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.ResponseCaching;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
@@ -25,7 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 // Load environment-specific configuration if it exists
-builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 // Setup Logger
 Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).Enrich.FromLogContext().CreateLogger();
 
@@ -157,10 +158,8 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
-builder.Services.AddSingleton<RateLimitConfigServiceProvider>();
-builder.Services.AddSingleton<IRateLimitConfigServiceProvider>(sp => sp.GetRequiredService<RateLimitConfigServiceProvider>());
-builder.Services.AddSingleton<ProxyConfigServiceProvider>();
-builder.Services.AddSingleton<IProxyConfigService>(sp => sp.GetRequiredService<ProxyConfigServiceProvider>());
+builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
+builder.Services.AddSingleton<IProxyConfigService, ProxyConfigServiceProvider>();
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
 builder.Services.AddSingleton<IRateLimitingStrategy, PolicyBasedRateLimitingStrategy>();
 builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
@@ -170,8 +169,24 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
-app.UseMiddleware<ReverseProxyMiddleware>();
-app.MapReverseProxy();
+
+// Use external method to configure proxy pipeline
+app.MapReverseProxy(UseProxyPipeline());
 
 await app.RunAsync();
 await Log.CloseAndFlushAsync();
+return;
+
+Action<IReverseProxyApplicationBuilder> UseProxyPipeline()
+{
+    async Task CustomProxyMiddleware(HttpContext context, RequestDelegate next)
+    {
+        await next(context); // Continue to next middleware (YARP)
+    }
+    return proxy =>
+    {
+        proxy.Use(CustomProxyMiddleware);
+        proxy.UseMiddleware<ReverseProxyCacheMiddleware>();
+        proxy.UseMiddleware<ReverseProxyServiceMiddleware>();
+    };
+}

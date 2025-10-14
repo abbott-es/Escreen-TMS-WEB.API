@@ -10,7 +10,7 @@ using WEB.GATEWAY.Models;
 using WEB.UTILITY.Logger;
 
 namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
-public class ReverseProxyMiddleware
+public class ReverseProxyServiceMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IRoutingStrategy _routingStrategy;
@@ -21,9 +21,9 @@ public class ReverseProxyMiddleware
     private readonly IMemoryCache _cache;
     private readonly IOutputCacheService _outputCacheService;
     private readonly IRateLimitConfigServiceProvider _rateLimitService;
-    private readonly IAppLogger<ReverseProxyMiddleware> _logger;
+    private readonly IAppLogger<ReverseProxyServiceMiddleware> _logger;
 
-    public ReverseProxyMiddleware(
+    public ReverseProxyServiceMiddleware(
         RequestDelegate next,
         IRoutingStrategy routingStrategy,
         IRateLimitingStrategy rateLimitingStrategy,
@@ -33,7 +33,7 @@ public class ReverseProxyMiddleware
         IMemoryCache cache,
         IOutputCacheService outputCacheService,
         IRateLimitConfigServiceProvider rateLimitService,
-        IAppLogger<ReverseProxyMiddleware> logger)
+        IAppLogger<ReverseProxyServiceMiddleware> logger)
     {
         _next = next;
         _routingStrategy = routingStrategy;
@@ -51,6 +51,35 @@ public class ReverseProxyMiddleware
     {
         try
         {
+            var proxyFeature = context.Features.Get<Yarp.ReverseProxy.Model.IReverseProxyFeature>();
+            var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+            if (proxyFeature == null)
+            {
+
+            }
+            var destination = proxyFeature.ProxiedDestination ?? await _routingStrategy.SelectDestinationAsync(proxyFeature);
+
+            if (destination == null)
+            {
+                _logger.LogDebug("No destination found for {Route}.", proxyFeature.Route.Config.ToString());
+                await _errorHandlingStrategy.HandleMissingDestinationAsync(context);
+                return;
+            }
+
+
+            // Add default YARP headers manually
+            var headers = context.Request.Headers;
+
+            headers["X-Forwarded-For"] = context.Connection.RemoteIpAddress?.ToString();
+            headers["X-Forwarded-Host"] = context.Request.Host.Value;
+            headers["X-Forwarded-Proto"] = context.Request.Scheme;
+            headers["X-Forwarded-PathBase"] = context.Request.PathBase.Value ?? "";
+            headers["X-Forwarded-Method"] = context.Request.Method;
+            headers["X-Forwarded-Query"] = context.Request.QueryString.Value ?? "";
+            headers["X-Forwarded-Path"] = context.Request.Path.Value ?? "";
+
+
             var cachePolicyName = context.Request.Headers["X-Cache-Policy"].FirstOrDefault() ?? "ShortTerm";
             var ratePolicyName = context.Request.Headers["X-RateLimit-Policy"].FirstOrDefault() ?? "balanced";
             var clientId = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -102,7 +131,7 @@ public class ReverseProxyMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception in ReverseProxyMiddleware.");
+            _logger.LogError(ex, "Unhandled exception in ReverseProxyServiceMiddleware.");
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             await context.Response.WriteAsync("Internal server error.");
         }

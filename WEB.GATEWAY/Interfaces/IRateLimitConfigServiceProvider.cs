@@ -16,6 +16,11 @@ public interface IRateLimitConfigServiceProvider
     /// </summary>
     /// <returns>Dictionary data of all Rate Limit Policy</returns>
     IReadOnlyDictionary<string, RateLimitOptions> GetAllPolicies();
-
+    /// <summary>
+    /// Check if Request allowable for that Policy and agent
+    /// </summary>
+    /// <param name="policyName"></param>
+    /// <param name="clientId"></param>
+    /// <returns></returns>
     bool IsRequestAllowed(string policyName, string clientId);
 }

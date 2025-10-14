@@ -19,5 +19,5 @@ public class OutputCacheOptions
     /// <summary>
     /// List of Cache Policies
     /// </summary>
-    public IReadOnlyDictionary<string, OutputCachePolicy> Policies { get; set; } 
+    public IReadOnlyDictionary<string, OutputCachePolicy> Policies { get; set; } = new Dictionary<string, OutputCachePolicy>();
 }
