@@ -3,10 +3,13 @@ using FluentValidation;
 using LanguageExt;
 using LanguageExt.Pipes;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security.ISecurity;
 
@@ -19,8 +22,11 @@ namespace WEB.SERVICES.Service
         private readonly IMapper _mapper;
         private readonly IValidator<UserDto> _validator;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IAppLogger<AuthService> _appLogger;
         private readonly IRsaEncryptionService _rsaEncryptionService;
+        private readonly ITokenService _tokenService;
+        private readonly ITokenLifecycleService _tokenLifecycleService;
+        private readonly IUserContextService _userContextService;
+        private readonly IValidator<LogoutDto> _logoutValidator;
 
         public AuthService(
             IUnitOfWork unitOfWork,
@@ -30,16 +36,21 @@ namespace WEB.SERVICES.Service
             IRepository<Auth> authRepository,
             IRsaEncryptionService rsaEncryptionService,
             IRepository<User> userRepository,
-            IUserContextService userContextService
+            IUserContextService userContextService,
+            ITokenService tokenService, ITokenLifecycleService tokenLifecycleService,
+            IValidator<LogoutDto> logoutValidator
             ) : base(appLogger)
         {
             _mapper = mapper;
             _validator = validator;
             _unitOfWork = unitOfWork;
             _rsaEncryptionService = rsaEncryptionService;
-            _appLogger = appLogger;
             _authRepository = authRepository;
             _userRepository = userRepository;
+            _tokenService = tokenService;
+            _tokenLifecycleService = tokenLifecycleService;
+            _userContextService = userContextService;
+            _logoutValidator = logoutValidator;
         }
 
         public async Task<Either<string, Guid>> CreateUserAsync(UserDto authDTO, CancellationToken ct = default)
@@ -76,7 +87,7 @@ namespace WEB.SERVICES.Service
             }, nameof(CreateUserAsync), ct);
         }
 
-        public async Task<User?> ValidateCredentialsAsync(string username, string encryptedPassword, CancellationToken ct = default)
+        private async Task<User?> ValidateCredentialsAsync(string username, string encryptedPassword, CancellationToken ct = default)
         {
             try
             {
@@ -120,7 +131,7 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        public async Task UpdateLastLoginAsync(string username, CancellationToken ct = default)
+        private async Task UpdateLastLoginAsync(string username, CancellationToken ct = default)
         {
             try
             {
@@ -145,5 +156,172 @@ namespace WEB.SERVICES.Service
                 throw;
             }
         }
+
+        public async Task<Either<string, SessionInfoDto>> GetSessionInfoAsync(ClaimsPrincipal user, bool isKeepAlive = false, CancellationToken ct = default)
+        {
+            try
+            {
+                var userIdStr = user.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Prelude.Left<string, SessionInfoDto>("Invalid or missing user ID in claims");
+                }
+
+                var session = await _tokenLifecycleService.GetActiveSessionAsync(userId, ct);
+                if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
+                {
+                    return Prelude.Left<string, SessionInfoDto>("No active session");
+                }
+                if (isKeepAlive)
+                    await _tokenLifecycleService.TouchSessionAsync(session.TokenID, ct);
+
+                var info = new SessionInfoDto
+                {
+                    TokenId = session.TokenID,
+                    RefreshToken = session.RefreshToken,
+                    AccessToken = _userContextService.AccessToken,
+                    AccessTokenJti = session.AccessTokenJti,
+                    ExpiryIn = session.RefreshTokenExpiry
+                };
+                return Prelude.Right<string, SessionInfoDto>(info);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Internal Server Error");
+                return Prelude.Left<string, SessionInfoDto>("Internal Server Error");
+            }
+        }
+
+        public async Task<Either<string, SessionInfoDto>> TryCreateSessionAsync(Guid tokenId, CancellationToken ct = default)
+        {
+            try
+            {
+                var session = await _tokenLifecycleService.GetByTokenIdAsync(tokenId, ct);
+                if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
+                {
+                    return Prelude.Left<string, SessionInfoDto>("Invalid or expired session");
+                }
+
+                var user = session.User;
+                var newToken = _tokenService.GenerateAccessToken(user);
+                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
+
+                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newJti, ct);
+
+                var response = new SessionInfoDto
+                {
+                    AccessToken = newToken.accessToken,
+                    RefreshToken = session.RefreshToken,
+                    TokenId = tokenId,
+                    ExpiryIn = newToken.expiresIn
+                };
+
+                return Prelude.Right<string, SessionInfoDto>(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating session for TokenID: {tokenId}");
+                return Prelude.Left<string, SessionInfoDto>("Internal Server Error");
+            }
+        }
+        public async Task<Either<string, SessionInfoDto>> TryLoginAsync(AuthDto authDto, CancellationToken ct = default)
+        {
+            try
+            {
+                var user = await ValidateCredentialsAsync(authDto.Username, authDto.Password, ct);
+                if (user == null)
+                    return Prelude.Left<string, SessionInfoDto>("Invalid credentials");
+
+                await UpdateLastLoginAsync(authDto.Username, ct);
+
+                var token = _tokenService.GenerateAccessToken(user);
+                if (!JwtHelper.TryExtractJti(token.accessToken, out var jti))
+                    return Prelude.Left<string, SessionInfoDto>("Failed to parse token identifier");
+
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, ct);
+
+                var response = new SessionInfoDto
+                {
+                    AccessToken = token.accessToken,
+                    RefreshToken = tokenRecord.RefreshToken,
+                    TokenId = tokenRecord.TokenID,
+                    ExpiryIn = token.expiresIn
+                };
+
+                return Prelude.Right<string, SessionInfoDto>(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Login error for user: {authDto.Username}");
+                return Prelude.Left<string, SessionInfoDto>("Internal Server Error");
+            }
+        }
+        public async Task<Either<string, SessionInfoDto>> TryRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+        {
+            try
+            {
+                var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
+                if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
+                    return Prelude.Left<string, SessionInfoDto>("Invalid or expired refresh token");
+
+                var newToken = _tokenService.GenerateAccessToken(token.User);
+                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
+
+                token.AccessTokenJti = newJti;
+                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, ct);
+
+                var response = new SessionInfoDto
+                {
+                    AccessToken = newToken.accessToken,
+                    RefreshToken = token.RefreshToken,
+                    TokenId = token.TokenID,
+                    ExpiryIn = newToken.expiresIn
+                };
+
+                return Prelude.Right<string, SessionInfoDto>(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error refreshing token: {refreshToken}");
+                return Prelude.Left<string, SessionInfoDto>("Internal Server Error");
+            }
+        }
+        public async Task<Either<string, string>> TryRevokeTokenAsync(Guid tokenId, CancellationToken ct = default)
+        {
+            try
+            {
+                await _tokenLifecycleService.RevokeTokenAsync(tokenId);
+                return Prelude.Right<string, string>(string.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error revoking token: {tokenId}");
+                return Prelude.Left<string, string>("Internal Server Error");
+            }
+        }
+        public async Task<Either<string, string>> TryLogoutAsync(LogoutDto request, CancellationToken ct)
+        {
+            try
+            {
+                var validate = await _logoutValidator.ValidateAsync(request, ct);
+                if (!validate.IsValid)
+                {
+                    var errors = validate.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}").ToList();
+                    return Prelude.Left<string, string>(string.Join("; ", errors));
+                }
+
+                var success = await _tokenLifecycleService.RevokeByAccessAndRefreshTokenAsync(request.AccessToken, request.RefreshToken);
+                if (!success)
+                    return Prelude.Left<string, string>("Invalid or already revoked token");
+
+                return Prelude.Right<string, string>(string.Empty); // success with empty payload
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Logout error for token: {request.AccessToken}");
+                return Prelude.Left<string, string>("Internal Server Error");
+            }
+        }
+
     }
 }

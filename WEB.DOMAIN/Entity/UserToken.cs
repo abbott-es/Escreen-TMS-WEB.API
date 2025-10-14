@@ -18,6 +18,7 @@ namespace WEB.DOMAIN.Entity
 
         public string DeviceInfo { get; set; }
         public string? IpAddress { get; set; }
+        public DateTime? LastAccessedUtc { get; set; }
 
         public User User { get; set; }
     }

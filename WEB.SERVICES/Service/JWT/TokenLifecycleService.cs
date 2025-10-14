@@ -308,5 +308,28 @@ namespace WEB.SERVICES.Service.JWT
                 return false;
             }
         }
+
+        public async Task TouchSessionAsync(Guid tokenId, CancellationToken ct = default)
+        {
+            try
+            {
+                await _unitOfWork.ExecuteAsync(async ct =>
+                {
+                    var session = await _tokenRepository.GetByIdAsync(tokenId, ct);
+                    if (session == null || session.IsRevoked)
+                    {
+                        _logger.LogWarning($"Cannot touch session: TokenID {tokenId} not found or revoked.");
+                        return;
+                    }
+                    session.LastAccessedUtc = DateTime.UtcNow;
+                    _tokenRepository.Update(session);
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error touching session for TokenID: {tokenId}");
+                throw;
+            }
+        }
     }
 }
