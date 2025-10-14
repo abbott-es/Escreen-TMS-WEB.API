@@ -17,6 +17,7 @@ namespace WEB.SERVICES.Service
         public string UserId => _accessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         public string Role => _accessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
         public string IpAddress => _accessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown";
+        public string AccessToken => _accessor.HttpContext?.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", "").Trim() ?? string.Empty;
         public string DeviceInfo
         {
             get

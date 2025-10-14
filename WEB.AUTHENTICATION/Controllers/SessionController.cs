@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
-using WEB.UTILITY.Extension;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -11,15 +8,10 @@ namespace WEB.AUTHENTICATION.Controllers
     [ApiController]
     public class SessionController : ControllerBase
     {
-        private readonly ITokenService _tokenService;
-        private readonly ITokenLifecycleService _tokenLifecycleService;
-        private readonly IUserService _userService;
-
-        public SessionController(ITokenService tokenService, ITokenLifecycleService tokenLifecycleService, IUserService userService)
+        private readonly IAuthService _authService;
+        public SessionController(IAuthService authService)
         {
-            _tokenService = tokenService;
-            _tokenLifecycleService = tokenLifecycleService;
-            _userService = userService;
+            _authService = authService;
         }
 
         /// <summary>
@@ -37,106 +29,25 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpGet]
         public async Task<IActionResult> Session(CancellationToken ct = default)
         {
-            try
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrWhiteSpace(userId))
-                {
-                    return ApiResponse<string>
-                        .Fail(["User ID not found in claims"])
-                        .ToUnauthorizedResult();
-                }
-
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
-                if (session == null)
-                {
-                    return ApiResponse<string>
-                        .Fail(["No active session"])
-                        .ToNotFoundResult();
-                }
-
-                var response = new
-                {
-                    session.TokenID,
-                    session.RefreshTokenExpiry,
-                    session.AccessTokenJti
-                };
-
-                return ApiResponse<object>
-                    .Ok(response, "Session retrieved")
-                    .ToOkResult();
-            }
-            catch
-            {
-                return ApiResponse<string>
-                    .Fail(["Internal Server Error"])
-                    .ToInternalServerErrorResult();
-            }
+            return await ResultMatcher.MatchResultAsync(_authService.GetSessionInfoAsync(User, false, ct));
         }
 
         /// <summary>
-        /// Renews the access token for the authenticated user's active session.
+        /// Authenticated user's active session.
         /// </summary>
         /// <param name="ct">Cancellation token.</param>
         /// <remarks>
-        /// This endpoint is used to keep the session alive by issuing a new access token without rotating the refresh token.
+        /// This endpoint is used to see the current session alive by without rotating the refresh token and access token.
         /// It requires the user to be authenticated and have an active session.
         /// </remarks>
         /// <returns>
-        /// 200 OK with a new access token if the session is valid.
+        /// 200 OK with a session if the session is valid.
         /// 401 Unauthorized if no active session is found.
         /// </returns>
         [HttpPost("keep-alive")]
         public async Task<IActionResult> KeepAlive(CancellationToken ct = default)
         {
-            try
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrWhiteSpace(userId))
-                {
-                    return ApiResponse<string>
-                        .Fail(["User ID not found in claims"])
-                        .ToUnauthorizedResult();
-                }
-
-                var user = await _userService.GetUserByIdAsync(userId);
-                if (user == null)
-                {
-                    return ApiResponse<string>
-                        .Fail(["User not found"])
-                        .ToNotFoundResult();
-                }
-
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(Guid.Parse(userId), ct);
-                if (session == null)
-                {
-                    return ApiResponse<string>
-                        .Fail(["No active session"])
-                        .ToUnauthorizedResult();
-                }
-
-                var newToken = _tokenService.GenerateAccessToken(user);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
-
-                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(session.TokenID, newJti);
-
-                var response = new
-                {
-                    AccessToken = newToken.accessToken,
-                    TokenId = session.TokenID,
-                    ExpiresIn = newToken.expiresIn
-                };
-
-                return ApiResponse<object>
-                    .Ok(response, "Session refreshed")
-                    .ToOkResult();
-            }
-            catch
-            {
-                return ApiResponse<string>
-                    .Fail(["Internal Server Error"])
-                    .ToInternalServerErrorResult();
-            }
+            return await ResultMatcher.MatchResultAsync(_authService.GetSessionInfoAsync(User, true, ct));
         }
 
         /// <summary>
@@ -154,39 +65,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("create-session")]
         public async Task<IActionResult> CreateSession([FromBody] Guid tokenId, CancellationToken ct = default)
         {
-            try
-            {
-                var session = await _tokenLifecycleService.GetByTokenIdAsync(tokenId, ct);
-                if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
-                {
-                    return ApiResponse<string>
-                        .Fail(["Invalid or expired session"])
-                        .ToUnauthorizedResult();
-                }
-
-                var user = session.User;
-                var newToken = _tokenService.GenerateAccessToken(user);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
-
-                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newJti, ct);
-
-                var response = new
-                {
-                    AccessToken = newToken.accessToken,
-                    TokenId = tokenId,
-                    ExpiresIn = newToken.expiresIn
-                };
-
-                return ApiResponse<object>
-                    .Ok(response, "Session created")
-                    .ToOkResult();
-            }
-            catch
-            {
-                return ApiResponse<string>
-                    .Fail(["Internal Server Error"])
-                    .ToInternalServerErrorResult();
-            }
+            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(tokenId, ct));
         }
     }
 }

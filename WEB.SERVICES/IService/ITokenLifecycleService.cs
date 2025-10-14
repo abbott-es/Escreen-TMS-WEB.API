@@ -19,6 +19,7 @@ namespace WEB.SERVICES.IService
         Task<UserToken?> GetByTokenIdAsync(Guid tokenId, CancellationToken ct = default);
         Task<bool> RevokeByAccessAndRefreshTokenAsync(string accessToken, string refreshToken, CancellationToken ct = default);
         string? GetJtiFromToken(string token);
+        Task TouchSessionAsync(Guid tokenId, CancellationToken ct = default);
     }
 
 }

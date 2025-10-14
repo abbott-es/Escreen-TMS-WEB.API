@@ -7,5 +7,6 @@ namespace WEB.SERVICES.IService
         public string Role { get; }
         public string IpAddress { get; }
         public string DeviceInfo { get; }
+        public string AccessToken { get; }
     }
 }

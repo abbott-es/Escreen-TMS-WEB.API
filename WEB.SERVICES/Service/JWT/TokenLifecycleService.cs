@@ -53,6 +53,7 @@ namespace WEB.SERVICES.Service.JWT
                         IsRevoked = false,
                         DeviceInfo = _userContextService.DeviceInfo,
                         IpAddress = _userContextService.IpAddress,
+                        LastAccessedUtc = DateTime.UtcNow
                     };
 
                     await _unitOfWork.ExecuteAsync(async ct =>
@@ -285,14 +286,14 @@ namespace WEB.SERVICES.Service.JWT
                     _appLogger.LogWarning("Refresh token not found or revoked.");
                     return false;
                 }
-                
+
                 // Ensure the access token matches the stored JTI
                 if (token.AccessTokenJti != jti)
                 {
                     _appLogger.LogWarning("Access token JTI mismatch.");
                     return false;
                 }
-                
+
                 // Ensure the refresh token is not expired
                 if (token.RefreshTokenExpiry < DateTime.UtcNow)
                 {
@@ -306,6 +307,29 @@ namespace WEB.SERVICES.Service.JWT
             {
                 _appLogger.LogError(ex, "Error validating access and refresh tokens.");
                 return false;
+            }
+        }
+
+        public async Task TouchSessionAsync(Guid tokenId, CancellationToken ct = default)
+        {
+            try
+            {
+                await _unitOfWork.ExecuteAsync(async ct =>
+                {
+                    var session = await _tokenRepository.GetByIdAsync(tokenId, ct);
+                    if (session == null || session.IsRevoked)
+                    {
+                        _logger.LogWarning($"Cannot touch session: TokenID {tokenId} not found or revoked.");
+                        return;
+                    }
+                    session.LastAccessedUtc = DateTime.UtcNow;
+                    _tokenRepository.Update(session);
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error touching session for TokenID: {tokenId}");
+                throw;
             }
         }
     }
