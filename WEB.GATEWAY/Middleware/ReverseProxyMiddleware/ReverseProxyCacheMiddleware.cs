@@ -47,15 +47,15 @@ public class ReverseProxyCacheMiddleware
 
         // endpoint matching
         var path = context.Request.Path;
-        var routeMatch = (await _routingService.GetRoutesAsync()).Keys.FirstOrDefault(k =>
-            k.Contains(path, StringComparison.InvariantCultureIgnoreCase));
-        if (string.IsNullOrWhiteSpace(routeMatch))
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            context.Response.ContentType = "text/plain";
-            await context.Response.WriteAsync("Route not found for this request", context.RequestAborted);
-            return;
-        }
+        //var routeMatch = (await _routingService.GetRoutesAsync()).Keys.FirstOrDefault(k =>
+        //    k.Contains(path, StringComparison.InvariantCultureIgnoreCase));
+        //if (string.IsNullOrWhiteSpace(routeMatch))
+        //{
+        //    context.Response.StatusCode = StatusCodes.Status404NotFound;
+        //    context.Response.ContentType = "text/plain";
+        //    await context.Response.WriteAsync("Route not found for this request", context.RequestAborted);
+        //    return;
+        //}
 
         // Rate limiting check
         var ratePolicyName = context.Request.Headers["X-RateLimit-Policy"].FirstOrDefault() ?? string.Empty;

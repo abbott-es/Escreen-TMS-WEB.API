@@ -51,21 +51,21 @@ public class ReverseProxyServiceMiddleware
     {
         try
         {
-            var proxyFeature = context.Features.Get<Yarp.ReverseProxy.Model.IReverseProxyFeature>();
-            var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+            //var proxyFeature = context.Features.Get<Yarp.ReverseProxy.Model.IReverseProxyFeature>();
+            //var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
 
-            if (proxyFeature == null)
-            {
+            //if (proxyFeature == null)
+            //{
 
-            }
-            var destination = proxyFeature.ProxiedDestination ?? await _routingStrategy.SelectDestinationAsync(proxyFeature);
+            //}
+            //var destination = proxyFeature.ProxiedDestination ?? await _routingStrategy.SelectDestinationAsync(proxyFeature);
 
-            if (destination == null)
-            {
-                _logger.LogDebug("No destination found for {Route}.", proxyFeature.Route.Config.ToString());
-                await _errorHandlingStrategy.HandleMissingDestinationAsync(context);
-                return;
-            }
+            //if (destination == null)
+            //{
+            //    _logger.LogDebug("No destination found for {Route}.", proxyFeature.Route.Config.ToString());
+            //    await _errorHandlingStrategy.HandleMissingDestinationAsync(context);
+            //    return;
+            //}
 
 
             // Add default YARP headers manually
