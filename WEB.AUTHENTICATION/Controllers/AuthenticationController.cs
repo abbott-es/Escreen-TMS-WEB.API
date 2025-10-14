@@ -1,11 +1,10 @@
-﻿using FluentValidation;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
-using WEB.UTILITY.Helper;
 using WEB.UTILITY.Extension;
+using WEB.UTILITY.Helper;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -30,25 +29,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("create-auth")]
         public async Task<IActionResult> CreateUserHash([FromBody] UserDto authDTO, CancellationToken ct = default)
         {
-            try
-            {
-                var result = await _authService.CreateUserAsync(authDTO, ct);
-                return result.Match<IActionResult>(
-                    Left: error => ApiResponse<string>
-                        .Fail([error], "User creation failed")
-                        .ToBadRequestResult(),
-
-                    Right: id => ApiResponse<UserDto>
-                        .Ok(authDTO, "User created")
-                        .ToCreatedResult()
-                );
-            }
-            catch
-            {
-                return ApiResponse<string>
-                    .Fail(["Internal Server Error"])
-                    .ToInternalServerErrorResult();
-            }
+            return await ResultMatcher.MatchResultAsync(_authService.CreateUserAsync(authDTO, ct));
         }
 
         /// <summary>
@@ -61,16 +42,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] AuthDto authDto, CancellationToken ct = default)
         {
-            var result = await _authService.TryLoginAsync(authDto, ct);
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToUnauthorizedResult(),
-
-                Right: response => ApiResponse<object>
-                    .Ok(response, "Login successful")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.TryLoginAsync(authDto, ct));
         }
 
         /// <summary>
@@ -82,17 +54,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] string refreshToken, CancellationToken ct = default)
         {
-            var result = await _authService.TryRefreshTokenAsync(refreshToken, ct);
-
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToUnauthorizedResult(),
-
-                Right: response => ApiResponse<object>
-                    .Ok(response, "Token refreshed")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.TryRefreshTokenAsync(refreshToken, ct));
         }
 
         /// <summary>
@@ -104,17 +66,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("revoke")]
         public async Task<IActionResult> RevokeToken([FromBody] Guid tokenId, CancellationToken ct = default)
         {
-            var result = await _authService.TryRevokeTokenAsync(tokenId, ct);
-
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToInternalServerErrorResult(),
-
-                Right: _ => ApiResponse<string>
-                    .Ok(string.Empty, "Token revoked")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.TryRevokeTokenAsync(tokenId, ct));
         }
 
         /// <summary>
@@ -126,20 +78,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutDto request, CancellationToken ct = default)
         {
-            var result = await _authService.TryLogoutAsync(request, ct);
-
-            return result.Match(
-                Left: error =>
-                {
-                    var isValidationError = error.Contains(":");
-                    return isValidationError
-                        ? ApiResponse<string>.Fail([error], "Validation failed").ToBadRequestResult()
-                        : ApiResponse<string>.Fail([error]).ToUnauthorizedResult();
-                },
-                Right: _ => ApiResponse<string>
-                    .Ok(string.Empty, "Logout successful")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.TryLogoutAsync(request, ct));
         }
     }
 }

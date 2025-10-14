@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
-using WEB.UTILITY.Extension;
 
 namespace WEB.AUTHENTICATION.Controllers
 {
@@ -32,16 +29,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpGet]
         public async Task<IActionResult> Session(CancellationToken ct = default)
         {
-            var result = await _authService.GetSessionInfoAsync(User, false, ct);
-
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToUnauthorizedResult(),
-                Right: session => ApiResponse<object>
-                    .Ok(session, "Session is active")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.GetSessionInfoAsync(User, false, ct));
         }
 
         /// <summary>
@@ -59,16 +47,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("keep-alive")]
         public async Task<IActionResult> KeepAlive(CancellationToken ct = default)
         {
-            var result = await _authService.GetSessionInfoAsync(User, true, ct);
-
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToUnauthorizedResult(),
-                Right: session => ApiResponse<object>
-                    .Ok(session, "Session is active")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.GetSessionInfoAsync(User, true, ct));
         }
 
         /// <summary>
@@ -86,17 +65,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpPost("create-session")]
         public async Task<IActionResult> CreateSession([FromBody] Guid tokenId, CancellationToken ct = default)
         {
-            var result = await _authService.TryCreateSessionAsync(tokenId, ct);
-
-            return result.Match(
-                Left: error => ApiResponse<string>
-                    .Fail([error])
-                    .ToUnauthorizedResult(),
-
-                Right: session => ApiResponse<object>
-                    .Ok(session, "Session created")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(tokenId, ct));
         }
     }
 }

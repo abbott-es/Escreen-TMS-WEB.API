@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Extension;
@@ -28,7 +29,7 @@ namespace WEB.API.Controllers
             var result = await _genericService.GetByIdAsync(id, ct);
             return result.Match<IActionResult>(
                 Left: error => ApiResponse<string>
-                    .Fail([error], "Entity not found")
+                    .Fail([error], HttpStatusCode.NotFound, "Entity not found")
                     .ToNotFoundResult(),
                 Right: success => ApiResponse<T>
                     .Ok(success, "Entity retrieved")
@@ -48,7 +49,7 @@ namespace WEB.API.Controllers
             var result = await _genericService.GetAllAsync(ct, includes);
             return result.Match<IActionResult>(
                 Left: error => ApiResponse<string>
-                    .Fail([error], "No entities found")
+                    .Fail([error], HttpStatusCode.NotFound, "No entities found")
                     .ToNotFoundResult(),
                 Right: entities => ApiResponse<IEnumerable<T>>
                     .Ok(entities, "Entities retrieved")
@@ -68,7 +69,7 @@ namespace WEB.API.Controllers
             var result = await _genericService.AddAsync(entity, ct);
             return result.Match<IActionResult>(
                 Left: error => ApiResponse<string>
-                    .Fail([error], "Creation failed")
+                    .Fail([error], HttpStatusCode.BadRequest, "Creation failed")
                     .ToBadRequestResult(),
                 Right: id => ApiResponse<T>
                     .Ok(entity, "Entity created")
@@ -88,7 +89,7 @@ namespace WEB.API.Controllers
             var result = await _genericService.UpdateAsync(entity, ct);
             return result.Match<IActionResult>(
                 Left: error => ApiResponse<string>
-                    .Fail([error], "Update failed")
+                    .Fail([error], HttpStatusCode.NotFound, "Update failed")
                     .ToNotFoundResult(),
                 Right: _ => ApiResponse<string>
                     .Ok("Entity updated")
@@ -115,10 +116,10 @@ namespace WEB.API.Controllers
             var result = await _genericService.DeleteListAsync(ids, ct);
             return result.Match<IActionResult>(
                 Left: error => ApiResponse<string>
-                    .Fail([error], "Deletion failed")
+                    .Fail([error], HttpStatusCode.NotFound, "Deletion failed")
                     .ToNotFoundResult(),
                 Right: _ => ApiResponse<object>
-                    .Ok(new { DeletedCount = ids.Count() },"Entities deleted")
+                    .Ok(new { DeletedCount = ids.Count() }, "Entities deleted")
                     .ToOkResult()
             );
         }

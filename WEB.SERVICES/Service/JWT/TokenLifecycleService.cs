@@ -53,6 +53,7 @@ namespace WEB.SERVICES.Service.JWT
                         IsRevoked = false,
                         DeviceInfo = _userContextService.DeviceInfo,
                         IpAddress = _userContextService.IpAddress,
+                        LastAccessedUtc = DateTime.UtcNow
                     };
 
                     await _unitOfWork.ExecuteAsync(async ct =>
@@ -285,14 +286,14 @@ namespace WEB.SERVICES.Service.JWT
                     _appLogger.LogWarning("Refresh token not found or revoked.");
                     return false;
                 }
-                
+
                 // Ensure the access token matches the stored JTI
                 if (token.AccessTokenJti != jti)
                 {
                     _appLogger.LogWarning("Access token JTI mismatch.");
                     return false;
                 }
-                
+
                 // Ensure the refresh token is not expired
                 if (token.RefreshTokenExpiry < DateTime.UtcNow)
                 {
