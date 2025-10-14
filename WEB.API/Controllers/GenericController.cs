@@ -1,8 +1,6 @@
-﻿using System.Net;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
-using WEB.UTILITY.Extension;
 
 namespace WEB.API.Controllers
 {
@@ -26,15 +24,7 @@ namespace WEB.API.Controllers
         [HttpGet("{id}")]
         public virtual async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
         {
-            var result = await _genericService.GetByIdAsync(id, ct);
-            return result.Match<IActionResult>(
-                Left: error => ApiResponse<string>
-                    .Fail([error], HttpStatusCode.NotFound, "Entity not found")
-                    .ToNotFoundResult(),
-                Right: success => ApiResponse<T>
-                    .Ok(success, "Entity retrieved")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_genericService.GetByIdAsync(id, ct));
         }
 
         /// <summary>
@@ -46,15 +36,7 @@ namespace WEB.API.Controllers
         [HttpGet]
         public virtual async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
         {
-            var result = await _genericService.GetAllAsync(ct, includes);
-            return result.Match<IActionResult>(
-                Left: error => ApiResponse<string>
-                    .Fail([error], HttpStatusCode.NotFound, "No entities found")
-                    .ToNotFoundResult(),
-                Right: entities => ApiResponse<IEnumerable<T>>
-                    .Ok(entities, "Entities retrieved")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_genericService.GetAllAsync(ct, includes));
         }
 
         /// <summary>
@@ -66,15 +48,7 @@ namespace WEB.API.Controllers
         [HttpPost]
         public virtual async Task<IActionResult> Create([FromBody] T entity, CancellationToken ct = default)
         {
-            var result = await _genericService.AddAsync(entity, ct);
-            return result.Match<IActionResult>(
-                Left: error => ApiResponse<string>
-                    .Fail([error], HttpStatusCode.BadRequest, "Creation failed")
-                    .ToBadRequestResult(),
-                Right: id => ApiResponse<T>
-                    .Ok(entity, "Entity created")
-                    .ToCreatedResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_genericService.AddAsync(entity, ct));
         }
 
         /// <summary>
@@ -86,15 +60,7 @@ namespace WEB.API.Controllers
         [HttpPut]
         public virtual async Task<IActionResult> Update([FromBody] T entity, CancellationToken ct = default)
         {
-            var result = await _genericService.UpdateAsync(entity, ct);
-            return result.Match<IActionResult>(
-                Left: error => ApiResponse<string>
-                    .Fail([error], HttpStatusCode.NotFound, "Update failed")
-                    .ToNotFoundResult(),
-                Right: _ => ApiResponse<string>
-                    .Ok("Entity updated")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_genericService.UpdateAsync(entity, ct));
         }
 
         /// <summary>
@@ -106,22 +72,7 @@ namespace WEB.API.Controllers
         [HttpDelete]
         public virtual async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
         {
-            if (ids == null || !ids.Any())
-            {
-                return ApiResponse<string>
-                    .Fail(["No IDs provided"])
-                    .ToBadRequestResult();
-            }
-
-            var result = await _genericService.DeleteListAsync(ids, ct);
-            return result.Match<IActionResult>(
-                Left: error => ApiResponse<string>
-                    .Fail([error], HttpStatusCode.NotFound, "Deletion failed")
-                    .ToNotFoundResult(),
-                Right: _ => ApiResponse<object>
-                    .Ok(new { DeletedCount = ids.Count() }, "Entities deleted")
-                    .ToOkResult()
-            );
+            return await ResultMatcher.MatchResultAsync(_genericService.DeleteListAsync(ids, ct));
         }
     }
 }
