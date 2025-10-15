@@ -1,0 +1,27 @@
+meta {
+  name: revoke
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/revoke
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+  X-Cache-Policy: {{cachePolicy}}
+  X-RateLimit-Policy: {{rateLimitPolicy}}
+}
+
+body:json {
+  {
+    "tokenId": "guid"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

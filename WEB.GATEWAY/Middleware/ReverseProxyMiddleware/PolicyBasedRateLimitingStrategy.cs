@@ -27,7 +27,7 @@ public class PolicyBasedRateLimitingStrategy : IRateLimitingStrategy
 
     public async Task<bool> EnforceAsync(HttpContext context, RouteModel routeConfig)
     {
-        var policyName = routeConfig?.Config.Metadata?.GetValueOrDefault(Constants.RATE_LIMIT_POLICY_METADATA_KEY);
+        var policyName = routeConfig?.Config.RateLimiterPolicy;
 
         if (string.IsNullOrEmpty(policyName))
         {
@@ -35,15 +35,6 @@ public class PolicyBasedRateLimitingStrategy : IRateLimitingStrategy
             context.Response.ContentType = "text/plain";
             context.Response.Headers.RetryAfter = "0";
             await context.Response.WriteAsync("Rate limit policy is missing for this request.", context.RequestAborted);
-            return false;
-        }
-
-        if (!_config.Policies.TryGetValue(policyName, out var options))
-        {
-            context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
-            context.Response.ContentType = "text/plain";
-            context.Response.Headers.RetryAfter = "0";
-            await context.Response.WriteAsync($"Unknown rate limit policy: '{policyName}'", context.RequestAborted);
             return false;
         }
 

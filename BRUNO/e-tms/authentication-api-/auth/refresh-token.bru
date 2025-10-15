@@ -1,0 +1,27 @@
+meta {
+  name: refresh-token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/refresh-token
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+  X-Cache-Policy: {{cachePolicy}}
+  X-RateLimit-Policy: {{rateLimitPolicy}}
+}
+
+body:json {
+  {
+    "refreshToken": "data"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

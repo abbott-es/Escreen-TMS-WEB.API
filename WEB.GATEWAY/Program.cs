@@ -186,7 +186,6 @@ Action<IReverseProxyApplicationBuilder> UseProxyPipeline()
     return proxy =>
     {
         proxy.Use(CustomProxyMiddleware);
-        proxy.UseMiddleware<ReverseProxyCacheMiddleware>();
-        proxy.UseMiddleware<ReverseProxyServiceMiddleware>();
+        proxy.UseMiddleware<ReverseProxyMiddleware>();
     };
 }

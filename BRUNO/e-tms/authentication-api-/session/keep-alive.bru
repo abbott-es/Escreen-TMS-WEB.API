@@ -1,0 +1,27 @@
+meta {
+  name: keep-alive
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/session/keep-alive
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+  X-Cache-Policy: {{cachePolicy}}
+  X-RateLimit-Policy: {{rateLimitPolicy}}
+}
+
+body:json {
+  {
+    "ct": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}

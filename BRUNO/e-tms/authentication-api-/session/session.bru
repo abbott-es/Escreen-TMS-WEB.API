@@ -1,13 +1,19 @@
 meta {
   name: session
   type: http
-  seq: 1
+  seq: 2
 }
 
 get {
   url: {{BASE_URL}}/authentication-api/api/sso/session/
   body: none
   auth: inherit
+}
+
+headers {
+  X-Cache-Policy: {{cachePolicy}}
+  Authorization: {{bearerToken}}
+  X-RateLimit-Policy: {{rateLimitPolicy}}
 }
 
 settings {

@@ -20,13 +20,13 @@ public class DefaultErrorHandlingStrategy : IErrorHandlingStrategy
     {
         var errorFeature = context.Features.Get<IForwarderErrorFeature>();
         _logger.LogError(errorFeature?.Exception!, $"Forwarding error: {Enum.GetName<ForwarderError>(error)}");
-        context.Response.Headers["X-Error-Type"] = Enum.GetName<ForwarderError>(error) ?? "Unknown_Error";
+        context.Response.Headers["X-Gateway-Error-Type"] = Enum.GetName<ForwarderError>(error) ?? "Unknown_Error";
         await AddDetails(context);
     }
 
     public async Task HandleMissingDestinationAsync(HttpContext context)
     {
-        context.Response.Headers["X-Error-Type"] = "No_Destination_Found";
+        context.Response.Headers["X-Gateway-Error-Type"] = "No_Destination_Found";
         await AddDetails(context);
     }
     private async static Task AddDetails(HttpContext context)
@@ -34,6 +34,6 @@ public class DefaultErrorHandlingStrategy : IErrorHandlingStrategy
         context.Response.StatusCode = StatusCodes.Status502BadGateway;
         context.Response.ContentType = "text/plain";
         context.Response.Headers.RetryAfter = "5"; // Suggests the client to retry after 5 seconds
-        await context.Response.WriteAsync("Bad Gateway.");
+        await context.Response.WriteAsync("Bad Gateway.", context.RequestAborted);
     }
 }
