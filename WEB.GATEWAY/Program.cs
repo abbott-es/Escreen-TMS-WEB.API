@@ -22,6 +22,18 @@ using Yarp.ReverseProxy.Transforms;
 
 // Load configuration and create builder
 var builder = WebApplication.CreateBuilder(args);
+// Read allowed origins from config
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 // Load configuration files
 builder.Configuration.AddEnvironmentVariables();
 builder.Configuration.SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
@@ -136,6 +148,7 @@ builder.Services.AddSingleton<IForwardingStrategy, YarpForwardingStrategy>();
 builder.Services.AddSingleton<IErrorHandlingStrategy, DefaultErrorHandlingStrategy>();
 
 var app = builder.Build();
+app.UseCors("AllowSpecificOrigins");
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
