@@ -1,5 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Reflection;
+using WEB.DOMAIN.Config;
 using WEB.DOMAIN.Entity;
+using WEB.DOMAIN.Interface;
 
 namespace WEB.DAL.AppDbContext
 {
@@ -12,27 +15,46 @@ namespace WEB.DAL.AppDbContext
         {
         }
 
-        // Core Entities
-        public DbSet<UserInfo> Users { get; set; }
-        public DbSet<Auth> Auths { get; set; }
-        public DbSet<Role> Roles { get; set; }
-
-        // Specialized User Roles
-        public DbSet<Driver> Drivers { get; set; }
-        public DbSet<Client> Clients { get; set; }
-        public DbSet<Helper> Helpers { get; set; }
-        public DbSet<TruckVendor> TruckVendors { get; set; }
-
-        // Vehicle Entities
-        public DbSet<TruckHead> TruckHeads { get; set; }
-        public DbSet<Chassis> Chassis { get; set; }
-
-        // Location
-        public DbSet<Location> Locations { get; set; }
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            #region Auto Register Entities
+            var entityTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => typeof(IEntity).IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
+
+            foreach (var type in entityTypes)
+            {
+                modelBuilder.Entity(type);
+            }
+            #endregion
+            #region Auto Apply Configs
+            var configAssembly = typeof(HelperConfig).Assembly;
+
+            var applyConfigMethod = typeof(ModelBuilder)
+                .GetMethods()
+                .First(m => m.Name == nameof(ModelBuilder.ApplyConfiguration));
+
+            var configTypes = configAssembly
+                .GetTypes()
+                .Where(t => t.IsClass && !t.IsAbstract)
+                .Select(t => new
+                {
+                    Type = t,
+                    Interface = t.GetInterfaces()
+                                 .FirstOrDefault(i => i.IsGenericType &&
+                                                      i.GetGenericTypeDefinition() == typeof(IEntityTypeConfiguration<>))
+                })
+                .Where(x => x.Interface != null);
+
+            foreach (var config in configTypes)
+            {
+                var entityType = config.Interface.GetGenericArguments()[0];
+                var method = applyConfigMethod.MakeGenericMethod(entityType);
+                method.Invoke(modelBuilder, new[] { Activator.CreateInstance(config.Type) });
+            }
+            #endregion
             base.OnModelCreating(modelBuilder);
+            #region Default Value
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
@@ -41,97 +63,6 @@ namespace WEB.DAL.AppDbContext
                     modelBuilder.Entity(entityType.ClrType).Property(nameof(BaseEntity.CreatedAt)).HasDefaultValueSql("GETUTCDATE()");
                 }
             }
-
-            modelBuilder.Entity<Auth>()
-            .HasKey(a => a.AuthID);
-
-            modelBuilder.Entity<Auth>()
-                        .HasOne(a => a.User)
-                        .WithOne(u => u.Auth)
-                        .HasForeignKey<Auth>(a => a.UserID);
-
-            modelBuilder.Entity<UserInfo>()
-                        .HasKey(u => u.UserID);
-            
-            modelBuilder.Entity<UserInfo>()
-                        .HasOne(u => u.Role)
-                        .WithMany(r => r.Users)
-                        .HasForeignKey(u => u.RoleID);
-
-            modelBuilder.Entity<Role>()
-                        .HasKey(r => r.RoleID);
-
-            modelBuilder.Entity<Role>()
-                        .Property(r => r.RoleName)
-                        .IsRequired()
-                        .HasMaxLength(50);
-
-            modelBuilder.Entity<Driver>()
-                        .HasKey(d => d.UserID);
-
-            modelBuilder.Entity<Driver>()
-                        .HasOne(d => d.User)
-                        .WithOne(u => u.Driver)
-                        .HasForeignKey<Driver>(d => d.UserID);
-
-            modelBuilder.Entity<Driver>()
-                        .HasOne(d => d.AssignedTruck)
-                        .WithMany()
-                        .HasForeignKey(d => d.AssignedTruckID);
-
-            modelBuilder.Entity<Client>()
-                        .HasKey(c => c.UserID);
-
-            modelBuilder.Entity<Client>()
-                        .HasOne(c => c.User)
-                        .WithOne(u => u.Client)
-                        .HasForeignKey<Client>(c => c.UserID);
-
-            modelBuilder.Entity<Helper>()
-                        .HasKey(h => h.UserID);
-
-            modelBuilder.Entity<Helper>()
-                        .HasOne(h => h.User)
-                        .WithOne(u => u.Helper)
-                        .HasForeignKey<Helper>(h => h.UserID)
-                        .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Helper>()
-                        .HasOne(h => h.AssignedDriver)
-                        .WithMany(d => d.Helpers)
-                        .HasForeignKey(h => h.AssignedDriverID)
-                        .OnDelete(DeleteBehavior.Cascade);;
-
-            modelBuilder.Entity<TruckVendor>()
-                        .HasKey(tv => tv.UserID);
-
-            modelBuilder.Entity<TruckVendor>()
-                        .HasOne(tv => tv.User)
-                        .WithOne(u => u.TruckVendor)
-                        .HasForeignKey<TruckVendor>(tv => tv.UserID);
-
-            modelBuilder.Entity<TruckHead>()
-                        .HasKey(t => t.TruckID);
-
-            modelBuilder.Entity<TruckHead>()
-                        .HasOne(t => t.Vendor)
-                        .WithMany(v => v.SuppliedTrucks)
-                        .HasForeignKey(t => t.VendorID);
-
-            modelBuilder.Entity<Chassis>()
-                        .HasKey(c => c.ChassisID);
-
-            modelBuilder.Entity<Chassis>()
-                        .HasOne(c => c.TruckHead)
-                        .WithOne(t => t.Chassis)
-                        .HasForeignKey<Chassis>(c => c.TruckID);
-            modelBuilder.Entity<Location>()
-                        .HasKey(l => l.LocationID);
-
-            modelBuilder.Entity<Location>()
-                        .HasOne(l => l.Client)
-                        .WithMany(c => c.Locations)
-                        .HasForeignKey(l => l.ClientID);
 
             modelBuilder.Entity<Role>().HasData(
                 new Role
@@ -145,8 +76,7 @@ namespace WEB.DAL.AppDbContext
                     RoleName = "Admin"
                 }
             );
-
+            #endregion
         }
-
     }
 }

@@ -1,76 +1,85 @@
 ﻿using AutoMapper;
-using Dapper;
 using FluentValidation;
-using LanguageExt;
-using LanguageExt.Pipes;
-using System.ComponentModel.DataAnnotations;
-using System.Data;
-using WEB.DAL;
-using WEB.DAL.Repository;
+using Microsoft.EntityFrameworkCore;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Logger;
-using WEB.UTILITY.Security;
-using static Dapper.SqlMapper;
+using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.SERVICES.Service
 {
-    public sealed class UserService : GenericService<UserInfo, UserDto>, IUserService
+    public sealed class UserService : BaseService<UserService>, IUserService
     {
-        private readonly IRepository<UserInfo> _userRepository;
+        private readonly IRepository<User> _userRepository;
+        private readonly IRepository<UserInfo> _userInfoRepository;
         private readonly IRepository<Auth> _authRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<UserDto> _validator;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IAppLogger<UserInfo> _logger;
         private readonly IRsaEncryptionService _rsaEncryptionService;
 
         public UserService(
             IUnitOfWork unitOfWork,
-            IRepository<UserInfo> userRepository,
+            IRepository<UserInfo> userInfoRepository,
             IMapper mapper,
             IValidator<UserDto> validator,
-            IAppLogger<UserInfo> logger,
+            IAppLogger<UserService> logger,
             IRepository<Auth> authRepository,
-            IRsaEncryptionService rsaEncryptionService
-        ) : base(unitOfWork, userRepository, mapper, validator, logger)
+            IRsaEncryptionService rsaEncryptionService,
+            IRepository<User> userRepository
+        ) : base(logger)
         {
-            _userRepository = userRepository;
+            _userInfoRepository = userInfoRepository;
             _mapper = mapper;
             _validator = validator;
             _unitOfWork = unitOfWork;
             _rsaEncryptionService = rsaEncryptionService;
-            _logger = logger;
             _authRepository = authRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<UserDto?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
-            var user = (await _userRepository.GetAllAsync(ct))
+            var user = (await _userInfoRepository.GetAllAsync(ct))
                        .FirstOrDefault(u => u.Email == email);
             return user == null ? null : _mapper.Map<UserDto>(user);
         }
 
-        public async Task<Either<string, Guid>> CreateUserAsync(UserDto authDTO, CancellationToken ct = default)
+        public async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
         {
-
-            var validate = await _validator.ValidateAsync(authDTO, ct);
-            if (!validate.IsValid)
+            try
             {
-                var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                return string.Join("; ", errors.Select(e => $"{e.ErrorMessage}"));
+                var user = await _userRepository
+                        .Query(asNoTracking: true)
+                        .Include(x => x.Role)
+                        .Include(uf => uf.UserInfo)
+                        .Include(uf => uf.Auth)
+                        .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userID) && a.IsActive, ct);
+                return user;
             }
-            var user = _mapper.Map<UserInfo>(authDTO);
-            var auth = _mapper.Map<Auth>(authDTO);
-            auth.UserID = user.UserID;
-            await _unitOfWork.ExecuteAsync(async c =>
+            catch (Exception ex)
             {
-                await _userRepository.AddAsync(user, c);
-                await _authRepository.AddAsync(auth, c);
-            }, ct);
-            return user.UserID;
+                _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
+                throw;
+            }
+            
+        }
+
+        public async Task<UserDto> GetUserDtoByIdAsync(string userID, CancellationToken ct = default)
+        {
+            try
+            {
+                var user = await GetUserByIdAsync(userID, ct);
+                return _mapper.Map<UserDto>(user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
+                throw;
+            }
+
         }
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)

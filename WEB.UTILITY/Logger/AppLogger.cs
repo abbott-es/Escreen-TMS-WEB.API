@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Http;
 using Serilog;
 using Serilog.Context;
-using System.Net;
 using WEB.UTILITY.Helper;
 
 namespace WEB.UTILITY.Logger
@@ -64,7 +63,5 @@ namespace WEB.UTILITY.Logger
                 _logger.Error(ex, message);
             }
         }
-
     }
-
 }

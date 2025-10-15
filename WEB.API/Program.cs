@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,9 @@ using System.Text;
 using WEB.API.SwaggerFilter;
 using WEB.SERVICES;
 using WEB.UTILITY.Caching;
+using WEB.SERVICES.Service.JWT;
+using WEB.UTILITY.Convention;
+using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,12 +22,17 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSetting
 builder.Services.AddSingleton(jwtSettings);
 // Add services to the container.
 
-builder.Services.AddControllers();
+
+builder.Services.AddControllers(options =>
+{
+    options.Conventions.Add(new ApiResponseConvention());
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddDataAccess(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSharedServices(builder.Configuration);
+builder.Services.AddGenericService();
 builder.Services.AddValidatorServices();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -77,6 +86,8 @@ builder.Services.AddStackExchangeRedisExtensions<SystemTextJsonSerializer>(new R
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
     options.SchemaFilter<RandomGuidSchemaFilter>();
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
@@ -85,7 +96,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Enter 'Bearer' followed by your JWT token"
+        Description = "Enter your JWT token"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -106,6 +117,10 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration));
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true;
+});
 
 var app = builder.Build();
 app.UseSerilogRequestLogging();
@@ -116,9 +131,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseMiddleware<TraceIdInjectionMiddleware>();
 app.UseHttpsRedirection();
+app.UseMiddleware<TokenRevocationMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<JwtThrottlingMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

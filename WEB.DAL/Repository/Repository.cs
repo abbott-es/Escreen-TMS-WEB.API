@@ -1,10 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Linq.Expressions;
+using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
+using WEB.DOMAIN.Resolver;
 
 namespace WEB.DAL.Repository
 {
-    public class Repository<T> : IRepository<T> where T : class
+    public class Repository<T> : IRepository<T> where T : class, IEntity
     {
         protected readonly AppDbContext.WebApiDbContext _context;
         protected readonly DbSet<T> _dbSet;
@@ -15,10 +18,16 @@ namespace WEB.DAL.Repository
             _dbSet = _context.Set<T>();
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true)
+        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths)
         {
             IQueryable<T> query = _dbSet;
-            if (asNoTracking) query = query.AsNoTracking();
+
+            if (asNoTracking)
+                query = query.AsNoTracking();
+
+            foreach (var include in includePaths)
+                query = query.Include(include);
+
             return await query.ToListAsync(ct);
         }
 
@@ -47,14 +56,20 @@ namespace WEB.DAL.Repository
                 return;
 
             // Get matching entities
+            var keyName = EntityKeyResolver.GetMappedKeyPropertyName<T>();
             var entities = await _dbSet
-                .Where(e => EF.Property<Guid>(e, "Id") != Guid.Empty && ids.Contains(EF.Property<Guid>(e, "Id")))
+                .Where(e => EF.Property<Guid>(e, keyName) != Guid.Empty && ids.Contains(EF.Property<Guid>(e, keyName)))
                 .ToListAsync(ct);
 
             if (entities.Count == 0)
                 return;
 
             _dbSet.RemoveRange(entities);
+        }
+
+        public IQueryable<T> Query(bool asNoTracking = true)
+        {
+            return asNoTracking ? _dbSet.AsNoTracking() : _dbSet;
         }
     }
 }
