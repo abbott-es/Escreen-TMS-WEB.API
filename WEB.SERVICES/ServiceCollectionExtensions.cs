@@ -12,6 +12,7 @@ using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.SERVICES.MappingProfile;
 using WEB.SERVICES.Service;
+using WEB.SERVICES.Service.ControlTower;
 using WEB.SERVICES.Service.JWT;
 using WEB.SERVICES.Validation;
 using WEB.UTILITY.Logger;
@@ -55,6 +56,12 @@ namespace WEB.SERVICES
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IClientService, ClientService>();
+
+            #region Control Tower Service
+            services.AddScoped<IBookingService, BookingService>();
+
+
+            #endregion
 
             return services;
         }

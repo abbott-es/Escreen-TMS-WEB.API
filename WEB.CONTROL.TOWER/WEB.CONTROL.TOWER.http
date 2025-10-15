@@ -1,0 +1,6 @@
+@WEB.CONTROL.TOWER_HostAddress = http://localhost:5203
+
+GET {{WEB.CONTROL.TOWER_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

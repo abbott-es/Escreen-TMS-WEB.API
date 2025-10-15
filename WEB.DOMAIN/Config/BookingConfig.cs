@@ -47,6 +47,22 @@ namespace WEB.DOMAIN.Config
                    .WithOne(sh => sh.Booking)
                    .HasForeignKey(sh => sh.BookingID)
                    .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(b => b.StartRoute)
+                .WithMany()
+                .HasForeignKey(b => b.StartRouteID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(b => b.EndRoute)
+                .WithMany()
+                .HasForeignKey(b => b.EndRouteID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasMany(b => b.StopRoute)
+                .WithOne(s => s.Booking)
+                .HasForeignKey(s => s.BookingID)
+                .IsRequired(false);
+
         }
     }
 }
