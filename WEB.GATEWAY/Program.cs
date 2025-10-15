@@ -158,6 +158,24 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
+
+builder.Services.AddOutputCache(options =>
+{
+    var outputCache = builder.Configuration.GetSection("OutputCache").Get<OutputCacheOptions>();
+
+    if (outputCache?.Policies != null)
+    {
+        Log.ForContext<Program>().Information("Configuring Output Cache policies");
+        foreach (var (policyName, policy) in outputCache.Policies)
+        {
+            options.AddPolicy(policyName, policyBuilder =>
+            {
+                policyBuilder.Expire(policy.Duration);
+            });
+        }
+    }
+});
+
 builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
 builder.Services.AddSingleton<IProxyConfigService, ProxyConfigServiceProvider>();
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
@@ -169,6 +187,7 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
+app.UseOutputCache();
 
 // Use external method to configure proxy pipeline
 app.MapReverseProxy(UseProxyPipeline());

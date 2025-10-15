@@ -47,9 +47,39 @@ public class ReverseProxyMiddleware
     {
         try
         {
-            var cachePolicyName = context.Request.Headers["X-Cache-Policy"].FirstOrDefault() ?? string.Empty;
+            var routes = await _routingService.GetRoutesAsync();
 
+            if(routes == null)
+            {
+                context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
+                context.Response.ContentType = "text/plain";
+                context.Response.Headers["X-Gateway-Error-Type"] = "Gateway_Timeout";
+                await context.Response.WriteAsync("Gateway Timeout for this request.", context.RequestAborted);
+                return;
+            }
+
+            var path = context.Request.Path.Value ?? string.Empty;
+
+            string NormalizePath(string p) => p?.Trim().ToLowerInvariant();
+
+            var routeMatch = routes
+                .Where(r => r.Value?.Match?.Path != null)
+                .FirstOrDefault(r =>
+                    NormalizePath(r.Value.Match.Path).Equals(NormalizePath(path), StringComparison.OrdinalIgnoreCase)
+                ).Value;
+
+            // endpoint matching
+            if (routeMatch == null)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                context.Response.ContentType = "text/plain";
+                context.Response.Headers["X-Gateway-Error-Type"] = "Route_Path_Not_Found";
+                await context.Response.WriteAsync($"Route is not found for this request. Route: '{path}'", context.RequestAborted);
+                return;
+            }
+            
             //cache policy matching
+            var cachePolicyName = routeMatch.OutputCachePolicy ?? string.Empty;
             var policy = _policyService.GetPolicy(cachePolicyName);
             if (policy == null)
             {
@@ -60,13 +90,10 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            var path = context.Request.Path;
-            var ratePolicyName = context.Request.Headers["X-RateLimit-Policy"].FirstOrDefault() ?? string.Empty;
-            var routes = await _routingService.GetRoutesAsync();
-            var routeMatch = routes.FirstOrDefault(r => r.Value.Match != null && r.Value.Match.Path != null && r.Value.Match.Path.Equals(path, StringComparison.InvariantCultureIgnoreCase) && r.Value.RateLimiterPolicy != null && r.Value.RateLimiterPolicy.Equals(ratePolicyName, StringComparison.InvariantCultureIgnoreCase));
+            var ratePolicyName = routeMatch.RateLimiterPolicy ?? string.Empty;
 
             //rate limit policy matching
-            if (string.IsNullOrEmpty(ratePolicyName) || string.IsNullOrEmpty(routeMatch.Value.RateLimiterPolicy))
+            if (string.IsNullOrEmpty(ratePolicyName) || string.IsNullOrEmpty(routeMatch?.RateLimiterPolicy))
             {
                 context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
                 context.Response.ContentType = "text/plain";
@@ -76,23 +103,13 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            if (!routeMatch.Value.RateLimiterPolicy.Equals(ratePolicyName, StringComparison.InvariantCultureIgnoreCase))
+            if (!routeMatch.RateLimiterPolicy.Equals(ratePolicyName, StringComparison.InvariantCultureIgnoreCase))
             {
                 context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
                 context.Response.ContentType = "text/plain";
                 context.Response.Headers["X-Gateway-Error-Type"] = "Policy_Rate_Limit_Invalid";
                 context.Response.Headers.RetryAfter = "0";
-                await context.Response.WriteAsync($"Rate Limit Policy is unknown for this request. Policy: '{ratePolicyName}'", context.RequestAborted);
-                return;
-            }
-
-            // endpoint matching
-            if ((routeMatch.Key == null || path == null) && routeMatch.Value.Match != null && routeMatch.Value.Match.Path != null && !routeMatch.Value.Match.Path.Equals(path))
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                context.Response.ContentType = "text/plain";
-                context.Response.Headers["X-Gateway-Error-Type"] = "Route_Path_Not_Found";
-                await context.Response.WriteAsync($"Route is not found for this request. Route: '{path}'", context.RequestAborted);
+                await context.Response.WriteAsync($"Rate Limit Policy is invalid for this request. Policy: '{ratePolicyName}'", context.RequestAborted);
                 return;
             }
 
@@ -126,13 +143,14 @@ public class ReverseProxyMiddleware
                 await _errorHandlingStrat.HandleMissingDestinationAsync(context);
                 return;
             }
+
             var allowed = proxyFeature.Route.Config.RateLimiterPolicy?.Equals(ratePolicyName, StringComparison.InvariantCultureIgnoreCase) ?? false;
 
             if (!allowed)
             {
                 _logger.LogDebug($"Rate limit policy: {proxyFeature.Route.Config.RateLimiterPolicy ?? "unknown"} is not allowed for {proxyFeature.Route.Config.Match.Path}.");
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                context.Response.Headers["X-Gateway-Error-Type"] = "Rate_Limit_Policy_Exceed";
+                context.Response.Headers["X-Gateway-Error-Type"] = "Policy_Rate_Limit_Exceed";
                 context.Response.ContentType = "text/plain";
                 await context.Response.WriteAsync("Rate limit exceeded for this request.", context.RequestAborted);
                 return;
