@@ -217,16 +217,13 @@ namespace WEB.SERVICES.Service
 
                 var user = session.User;
                 var newToken = _tokenService.GenerateAccessToken(user);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
 
-                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newJti, ct);
+                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newToken.jti, ct);
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = newToken.accessToken,
-                    RefreshToken = session.RefreshToken,
-                    TokenId = tokenId,
-                    ExpiryIn = newToken.expiresIn
+                    RefreshToken = session.RefreshToken
                 };
 
                 return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
@@ -248,19 +245,13 @@ namespace WEB.SERVICES.Service
                 await UpdateLastLoginAsync(authDto.Username, ct);
 
                 var token = _tokenService.GenerateAccessToken(user);
-                if (!JwtHelper.TryExtractJti(token.accessToken, out var jti))
-                {
-                    return Prelude.Left(ApiResponse<string>.Fail(["Failed to parse token identifier"]));
-                }
 
-                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, ct);
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, token.jti, ct);
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = token.accessToken,
-                    RefreshToken = tokenRecord.RefreshToken,
-                    TokenId = tokenRecord.TokenID,
-                    ExpiryIn = token.expiresIn
+                    RefreshToken = tokenRecord.RefreshToken
                 };
                 return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
             }
@@ -279,17 +270,13 @@ namespace WEB.SERVICES.Service
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired refresh token"], HttpStatusCode.NotFound));
 
                 var newToken = _tokenService.GenerateAccessToken(token.User);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
 
-                token.AccessTokenJti = newJti;
-                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, ct);
+                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, newToken.jti, ct);
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = newToken.accessToken,
-                    RefreshToken = token.RefreshToken,
-                    TokenId = token.TokenID,
-                    ExpiryIn = newToken.expiresIn
+                    RefreshToken = token.RefreshToken
                 };
                 return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
             }

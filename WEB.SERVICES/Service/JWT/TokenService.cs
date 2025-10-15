@@ -19,10 +19,11 @@ namespace WEB.SERVICES.Service.JWT
             _settings = settings;
         }
 
-        public (string accessToken, DateTime expiresIn) GenerateAccessToken(User user)
+        public (string accessToken, string jti) GenerateAccessToken(User user)
         {
             try
             {
+                string jti = Guid.NewGuid().ToString();
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
@@ -41,7 +42,7 @@ namespace WEB.SERVICES.Service.JWT
                     expires: expiresIn,
                     signingCredentials: creds);
 
-                return (new JwtSecurityTokenHandler().WriteToken(token), expiresIn);
+                return (new JwtSecurityTokenHandler().WriteToken(token), jti);
             }
             catch (Exception ex)
             {

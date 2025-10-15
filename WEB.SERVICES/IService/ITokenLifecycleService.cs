@@ -10,7 +10,7 @@ namespace WEB.SERVICES.IService
     public interface ITokenLifecycleService
     {
         Task<UserToken> IssueTokenAsync(Guid userId, string jti, CancellationToken ct = default);
-        Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId, CancellationToken ct = default);
+        Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId, string jti, CancellationToken ct = default);
         Task RevokeTokenAsync(Guid tokenId, CancellationToken ct = default);
         Task<bool> IsAccessTokenRevokedAsync(string jti, CancellationToken ct = default);
         Task<UserToken> GetByRefreshTokenAsync(string refreshToken, CancellationToken ct = default);
