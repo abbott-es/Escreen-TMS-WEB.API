@@ -17,6 +17,20 @@ using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Read allowed origins from config
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 builder.Services.AddSingleton(jwtSettings);
@@ -123,6 +137,7 @@ builder.Services.Configure<RouteOptions>(options =>
 });
 
 var app = builder.Build();
+app.UseCors("AllowSpecificOrigins");
 app.UseSerilogRequestLogging();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
