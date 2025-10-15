@@ -243,7 +243,7 @@ namespace WEB.SERVICES.Service
             {
                 var user = await ValidateCredentialsAsync(authDto.Username, authDto.Password, ct);
                 if (user == null)
-                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired session"], HttpStatusCode.NotFound));
+                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid Credentials"], HttpStatusCode.NotFound));
 
                 await UpdateLastLoginAsync(authDto.Username, ct);
 
