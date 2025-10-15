@@ -1,0 +1,35 @@
+meta {
+  name: create-auth
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/create-auth
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+body:json {
+  {
+    "RoleID": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB" ,
+    "Auth" :{
+    "Username": "test",
+    "Password": "test"
+    } , 
+    "UserInfo" : { 
+      "FirstName" : "secret",
+      "LastName" : "details",
+      "Email" : "test@test.com",
+      "ContactNumber": "0"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,26 @@
+meta {
+  name: logout
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/logout
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+body:json {
+  {
+    "accessToken": "guid",
+    "refreshToken0": "guid"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
