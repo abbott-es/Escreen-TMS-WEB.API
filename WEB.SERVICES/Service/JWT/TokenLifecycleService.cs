@@ -71,7 +71,7 @@ namespace WEB.SERVICES.Service.JWT
             }, nameof(IssueTokenAsync), ct);
         }
 
-        public async Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId, CancellationToken ct = default)
+        public async Task<UserToken?> RotateRefreshTokenAsync(Guid tokenId, string jti, CancellationToken ct = default)
         {
             try
             {
@@ -84,6 +84,7 @@ namespace WEB.SERVICES.Service.JWT
                         return null;
                     }
 
+                    token.AccessTokenJti = jti;
                     token.RefreshToken = _tokenService.GenerateRefreshToken();
                     token.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays);
                     _tokenRepository.Update(token);
