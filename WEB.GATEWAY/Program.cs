@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +12,6 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.ResponseCaching;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
@@ -47,6 +48,12 @@ Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.All;
+    options.KnownProxies.Add(IPAddress.Parse("127.0.0.1")); // or your gateway IP
+});
 
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
 {
