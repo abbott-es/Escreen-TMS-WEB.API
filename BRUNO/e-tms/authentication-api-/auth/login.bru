@@ -1,0 +1,26 @@
+meta {
+  name: login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/sso/authentication/login
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+body:json {
+  {
+   "Username": "test",
+    "Password": "test"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

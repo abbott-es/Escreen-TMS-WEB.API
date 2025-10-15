@@ -1,0 +1,19 @@
+meta {
+  name: session
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/authentication-api/api/sso/session/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+settings {
+  encodeUrl: true
+}
