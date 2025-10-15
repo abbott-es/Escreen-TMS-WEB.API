@@ -128,6 +128,17 @@ builder.Services.AddOutputCache(options =>
     }
 });
 
+// Add CORS services
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("https://localhost:3000") // Replace with your frontend URL
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
 builder.Services.AddSingleton<IProxyConfigService, ProxyConfigServiceProvider>();
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
@@ -137,6 +148,8 @@ builder.Services.AddSingleton<IErrorHandlingStrategy, DefaultErrorHandlingStrate
 
 var app = builder.Build();
 
+
+app.UseCors("AllowFrontend");
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 app.UseOutputCache();
