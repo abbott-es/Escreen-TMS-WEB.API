@@ -47,54 +47,6 @@ Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
-//.AddTransforms(builderContext =>
-//{
-//    builderContext.AddRequestTransform(transformContext =>
-//    {
-//        var context = transformContext.HttpContext;
-//        var headers = transformContext.ProxyRequest.Headers;
-
-//        // Safely get values
-//        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
-//        var host = context.Request.Host.Value;
-//        var scheme = context.Request.Scheme;
-//        var pathBase = context.Request.PathBase.Value ?? string.Empty;
-//        var method = context.Request.Method;
-//        var query = context.Request.QueryString.Value ?? string.Empty;
-//        var path = context.Request.Path.Value ?? string.Empty;
-
-//        // Add headers only if not already present
-//        if (!string.IsNullOrEmpty(remoteIp) && !headers.Contains("X-Forwarded-For"))
-//        {
-//            headers.TryAddWithoutValidation("X-Forwarded-For", remoteIp);
-//        }
-
-//        if (!headers.Contains("X-Forwarded-Host"))
-//        {
-//            headers.TryAddWithoutValidation("X-Forwarded-Host", host);
-//        }
-
-//        if (!headers.Contains("X-Forwarded-Proto"))
-//            headers.TryAddWithoutValidation("X-Forwarded-Proto", scheme);
-
-//        if (!headers.Contains("X-Forwarded-PathBase"))
-//            headers.TryAddWithoutValidation("X-Forwarded-PathBase", pathBase);
-
-//        if (!headers.Contains("X-Forwarded-Method"))
-//            headers.TryAddWithoutValidation("X-Forwarded-Method", method);
-
-//        if (!headers.Contains("X-Forwarded-Scheme"))
-//            headers.TryAddWithoutValidation("X-Forwarded-Scheme", scheme);
-
-//        if (!headers.Contains("X-Forwarded-Query"))
-//            headers.TryAddWithoutValidation("X-Forwarded-Query", query);
-
-//        if (!headers.Contains("X-Forwarded-Path"))
-//            headers.TryAddWithoutValidation("X-Forwarded-Path", path);
-
-//        return ValueTask.CompletedTask;
-//    });
-//});
 
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
 {
@@ -158,6 +110,24 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsync("Rate limit exceeded for this request.", token);
     };
 });
+
+builder.Services.AddOutputCache(options =>
+{
+    var outputCache = builder.Configuration.GetSection("OutputCache").Get<OutputCacheOptions>();
+
+    if (outputCache?.Policies != null)
+    {
+        Log.ForContext<Program>().Information("Configuring Output Cache policies");
+        foreach (var (policyName, policy) in outputCache.Policies)
+        {
+            options.AddPolicy(policyName, policyBuilder =>
+            {
+                policyBuilder.Expire(policy.Duration);
+            });
+        }
+    }
+});
+
 builder.Services.AddSingleton<IRateLimitConfigServiceProvider, RateLimitConfigServiceProvider>();
 builder.Services.AddSingleton<IProxyConfigService, ProxyConfigServiceProvider>();
 builder.Services.AddSingleton<IRoutingStrategy, DefaultRoutingStrategy>();
@@ -169,6 +139,7 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
+app.UseOutputCache();
 
 // Use external method to configure proxy pipeline
 app.MapReverseProxy(UseProxyPipeline());

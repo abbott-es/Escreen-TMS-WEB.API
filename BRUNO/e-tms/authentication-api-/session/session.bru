@@ -7,13 +7,11 @@ meta {
 get {
   url: {{BASE_URL}}/authentication-api/api/sso/session/
   body: none
-  auth: inherit
+  auth: none
 }
 
 headers {
-  X-Cache-Policy: {{cachePolicy}}
   Authorization: {{bearerToken}}
-  X-RateLimit-Policy: {{rateLimitPolicy}}
 }
 
 settings {
