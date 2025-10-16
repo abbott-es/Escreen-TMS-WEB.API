@@ -1,0 +1,15 @@
+meta {
+  name: validate-access-token
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{BASE_URL}}/authentication-api/api/authentication/validate-access-token
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
