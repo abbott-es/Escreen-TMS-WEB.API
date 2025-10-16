@@ -31,7 +31,7 @@ namespace WEB.API.Controllers
         /// 404 Not Found if no user is found.
         /// </returns>
         [HttpGet("GetUserByID/{userID}")]
-        public async Task<IActionResult> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        public async Task<IActionResult> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_userService.GetUserDtoByIdAsync(userID, ct));
         }

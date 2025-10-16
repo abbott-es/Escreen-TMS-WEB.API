@@ -32,7 +32,7 @@ namespace WEB.SERVICES.Service
             _userContextService = userContextService;
         }
 
-        private async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        private async Task<User> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
         {
             try
             {
@@ -41,7 +41,7 @@ namespace WEB.SERVICES.Service
                         .Include(x => x.Role)
                         .Include(uf => uf.UserInfo)
                         .Include(uf => uf.Auth)
-                        .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userID) && a.IsActive, ct);
+                        .FirstOrDefaultAsync(a => a.UserID == userID && a.IsActive, ct);
                 return user;
             }
             catch (Exception ex)

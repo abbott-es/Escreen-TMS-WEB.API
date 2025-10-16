@@ -66,7 +66,7 @@ namespace WEB.SERVICES.Service
                     var errorMessage = string.Join("; ", errors.Select(e => $"{e.ErrorMessage}"));
                     _logger.LogWarning($"User creation failed validation: {errorMessage}");
                     return Prelude.Left(ApiResponse<string>
-                        .Fail(errors.Select(x => x.ErrorMessage).ToList(), HttpStatusCode.Unauthorized));
+                        .Fail(errors.Select(x => x.ErrorMessage).ToList()));
                 }
                 var user = _mapper.Map<User>(authDTO, opts =>
                 {
