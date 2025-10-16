@@ -1,16 +1,18 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.ResponseCaching;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
@@ -58,7 +60,35 @@ Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 
 builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
 
-builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY))
+.AddTransforms(builderContext =>
+{
+    builderContext.AddRequestTransform(async transformContext =>
+    {
+        var incomingHeaders = transformContext.HttpContext.Request.Headers;
+
+        var restrictedHeaders = new HashSet<string>(new[] { "Host", "Content-Length", "Transfer-Encoding" }, StringComparer.OrdinalIgnoreCase);
+        // Copy headers from incoming request to proxy request, excluding restricted headers
+        foreach (var header in incomingHeaders)
+        {
+            if (!restrictedHeaders.Contains(header.Key))
+            {
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+            }
+        }
+
+        // Optionally: log or inspect headers for debugging
+        foreach (var h in transformContext.ProxyRequest.Headers)
+        {
+            Log.ForContext<Program>().Debug($"{h.Key}: {string.Join(", ", h.Value)}");
+        }
+    });
+});
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.All;
+    options.KnownProxies.Add(IPAddress.Parse("127.0.0.1")); // or your gateway IP
+});
 
 builder.Services.AddSingleton<HttpMessageInvoker>(sp =>
 {
