@@ -1,0 +1,19 @@
+meta {
+  name: user-update
+  type: http
+  seq: 4
+}
+
+put {
+  url: 127.0.0.1:7095
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: {{bearerToken}}
+}
+
+settings {
+  encodeUrl: true
+}
