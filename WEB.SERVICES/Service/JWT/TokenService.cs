@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using LanguageExt;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -27,7 +28,7 @@ namespace WEB.SERVICES.Service.JWT
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, jti),
                     new Claim(ClaimTypes.Name, user.Auth.Username),
                     new Claim(ClaimTypes.Role, user.Role.RoleName)
                 };
@@ -47,13 +48,45 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Not able to generate access token");
-                throw;
+                return (string.Empty, string.Empty);
             }
         }
 
         public string GenerateRefreshToken()
         {
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        }
+
+        public Try<ClaimsPrincipal> ValidateAccessToken(string accessToken)
+        {
+            try
+            {
+                var validationParams = new TokenValidationParameters
+                {
+                    ValidateAudience = true,
+                    ValidateIssuer = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey)),
+                    ValidAlgorithms = new string[] { SecurityAlgorithms.HmacSha256 },
+                    ValidateLifetime = false,
+                    ValidAudience = _settings.Audience,
+                    ValidIssuer = _settings.Issuer,
+                };
+
+                return () =>
+                {
+                    var principal = new JwtSecurityTokenHandler().ValidateToken(
+                        accessToken,
+                        validationParams,
+                        out var securityToken);
+
+                    return principal;
+                };
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
     }
 }

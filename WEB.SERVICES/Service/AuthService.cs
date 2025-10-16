@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Azure;
+using Azure.Core;
 using FluentValidation;
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
@@ -167,14 +168,11 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var userIdStr = user.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-                {
-                    return Prelude.Left(ApiResponse<string>
-                        .Fail(["User ID not found in claims"], HttpStatusCode.Unauthorized));
-                }
+                var jti = _tokenLifecycleService.GetJtiFromToken(_userContextService.AccessToken);
+                if (jti == null)
+                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token"], HttpStatusCode.NotFound));
 
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(userId, ct);
+                var session = await _tokenLifecycleService.GetActiveSessionAsync(jti, ct);
                 if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["No active session"], HttpStatusCode.NotFound));
@@ -187,11 +185,8 @@ namespace WEB.SERVICES.Service
 
                 var info = new SessionInfoDto
                 {
-                    TokenId = session.TokenID,
                     RefreshToken = session.RefreshToken,
-                    AccessToken = _userContextService.AccessToken,
-                    AccessTokenJti = session.AccessTokenJti,
-                    ExpiryIn = session.RefreshTokenExpiry
+                    AccessToken = _userContextService.AccessToken
                 };
 
                 return Prelude.Right(ApiResponse<SessionInfoDto>
@@ -204,21 +199,19 @@ namespace WEB.SERVICES.Service
             }
         }
 
-
-        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryCreateSessionAsync(Guid tokenId, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryCreateSessionAsync(Guid jti, CancellationToken ct = default)
         {
             try
             {
-                var session = await _tokenLifecycleService.GetByTokenIdAsync(tokenId, ct);
+                var session = await _tokenLifecycleService.GetByTokenIdAsync(jti, ct);
                 if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired session"], HttpStatusCode.Unauthorized));
                 }
 
-                var user = session.User;
-                var newToken = _tokenService.GenerateAccessToken(user);
+                var newToken = _tokenService.GenerateAccessToken(session.User);
 
-                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newToken.jti, ct);
+                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(session.TokenID, newToken.jti, ct);
 
                 var response = new SessionInfoDto
                 {
@@ -230,7 +223,7 @@ namespace WEB.SERVICES.Service
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating session for TokenID: {tokenId}");
+                _logger.LogError(ex, $"Error creating session for access token ID: {jti}");
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
@@ -247,13 +240,16 @@ namespace WEB.SERVICES.Service
                 var token = _tokenService.GenerateAccessToken(user);
 
                 var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, token.jti, ct);
-
+                if (tokenRecord == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(["Not able to issue token"]));
+                }
                 var response = new SessionInfoDto
                 {
                     AccessToken = token.accessToken,
                     RefreshToken = tokenRecord.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "Login Successful"));
             }
             catch (Exception ex)
             {
@@ -265,20 +261,26 @@ namespace WEB.SERVICES.Service
         {
             try
             {
+                var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken);
+                if (jti == null)
+                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token"], HttpStatusCode.NotFound));
+
                 var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
                 if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired refresh token"], HttpStatusCode.NotFound));
 
                 var newToken = _tokenService.GenerateAccessToken(token.User);
 
-                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, newToken.jti, ct);
+                var updatedToken = await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, newToken.jti, ct);
+                if (updatedToken == null)
+                    return Prelude.Left(ApiResponse<string>.Fail(["Not able to generate new access token"], HttpStatusCode.InternalServerError));
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = newToken.accessToken,
                     RefreshToken = token.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "New Access Token has been issued"));
             }
             catch (Exception ex)
             {
