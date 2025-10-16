@@ -1,12 +1,13 @@
 ﻿using AutoMapper;
-using FluentValidation;
+using LanguageExt;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
-using WEB.UTILITY.Security.ISecurity;
 
 namespace WEB.SERVICES.Service
 {
@@ -14,40 +15,24 @@ namespace WEB.SERVICES.Service
     {
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<UserInfo> _userInfoRepository;
-        private readonly IRepository<Auth> _authRepository;
         private readonly IMapper _mapper;
-        private readonly IValidator<UserDto> _validator;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IRsaEncryptionService _rsaEncryptionService;
+        private readonly IUserContextService _userContextService;
 
         public UserService(
-            IUnitOfWork unitOfWork,
             IRepository<UserInfo> userInfoRepository,
             IMapper mapper,
-            IValidator<UserDto> validator,
             IAppLogger<UserService> logger,
-            IRepository<Auth> authRepository,
-            IRsaEncryptionService rsaEncryptionService,
-            IRepository<User> userRepository
+            IRepository<User> userRepository,
+            IUserContextService userContextService
         ) : base(logger)
         {
             _userInfoRepository = userInfoRepository;
             _mapper = mapper;
-            _validator = validator;
-            _unitOfWork = unitOfWork;
-            _rsaEncryptionService = rsaEncryptionService;
-            _authRepository = authRepository;
             _userRepository = userRepository;
+            _userContextService = userContextService;
         }
 
-        public async Task<UserDto?> GetByEmailAsync(string email, CancellationToken ct = default)
-        {
-            var user = (await _userInfoRepository.GetAllAsync(ct))
-                       .FirstOrDefault(u => u.Email == email);
-            return user == null ? null : _mapper.Map<UserDto>(user);
-        }
-
-        public async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        private async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
         {
             try
             {
@@ -62,25 +47,28 @@ namespace WEB.SERVICES.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
-                throw;
+                return null;
             }
-            
         }
 
-        public async Task<UserDto> GetUserDtoByIdAsync(string userID, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<UserDto>>> GetUserDtoByIdAsync(string userID, CancellationToken ct = default)
         {
-            try
-            {
-                var user = await GetUserByIdAsync(userID, ct);
-                return _mapper.Map<UserDto>(user);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error fetch user for user ID: {userID}");
-                throw;
-            }
+            var user = await GetUserByIdAsync(userID, ct);
+            if (user == null)
+                return Prelude.Left(ApiResponse<string>.Fail(["Invalid User ID"], HttpStatusCode.NotFound));
 
+            return Prelude.Right(ApiResponse<UserDto>.Ok(_mapper.Map<UserDto>(user), "User successfully retrieved"));
         }
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> GetActiveUserRoleAsync(CancellationToken ct = default)
+        {
+            var user = await GetUserByIdAsync(_userContextService.UserId, ct);
+            if (user == null)
+                return Prelude.Left(ApiResponse<string>.Fail(["Invalid Authenticated User"], HttpStatusCode.NotFound));
+
+            return Prelude.Right(ApiResponse<string>.Ok(user.Role.RoleName, "User role successfully retrieved"));
+        }
+
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)
         //{

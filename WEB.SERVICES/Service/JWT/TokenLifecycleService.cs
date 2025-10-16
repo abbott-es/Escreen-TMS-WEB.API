@@ -1,10 +1,11 @@
 ﻿using LanguageExt;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using WEB.DAL.Repository;
+using System.Security.Claims;
+using System.Text;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
-using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
@@ -48,7 +49,7 @@ namespace WEB.SERVICES.Service.JWT
                         UserID = userId,
                         AccessTokenJti = jti,
                         RefreshToken = _tokenService.GenerateRefreshToken(),
-                        RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays),
+                        RefreshTokenExpiry = DateTime.UtcNow.AddMinutes(_settings.RefreshTokenExpiryMinutes),
                         IssuedAt = DateTime.UtcNow,
                         IsRevoked = false,
                         DeviceInfo = _userContextService.DeviceInfo,
@@ -66,7 +67,7 @@ namespace WEB.SERVICES.Service.JWT
                 catch (Exception err)
                 {
                     _appLogger.LogError(err, $"Error adding token for userId: {userId}");
-                    throw;
+                    return null;
                 }
             }, nameof(IssueTokenAsync), ct);
         }
@@ -86,7 +87,7 @@ namespace WEB.SERVICES.Service.JWT
 
                     token.AccessTokenJti = jti;
                     token.RefreshToken = _tokenService.GenerateRefreshToken();
-                    token.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpiryDays);
+                    token.RefreshTokenExpiry = DateTime.UtcNow.AddMinutes(_settings.RefreshTokenExpiryMinutes);
                     _tokenRepository.Update(token);
                     return token;
                 }, ct);
@@ -136,7 +137,7 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error checking revocation status for JTI: {jti}");
-                throw;
+                return false;
             }
         }
 
@@ -158,11 +159,11 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error retrieving token by refresh token: {refreshToken}");
-                throw;
+                return null;
             }
         }
 
-        public async Task<UserToken?> GetActiveSessionAsync(Guid userId, CancellationToken ct = default)
+        public async Task<UserToken?> GetActiveSessionAsync(string jti, CancellationToken ct = default)
         {
             try
             {
@@ -171,13 +172,13 @@ namespace WEB.SERVICES.Service.JWT
                     return await _tokenRepository
                         .Query(asNoTracking: true)
                         .Include(t => t.User)
-                        .FirstOrDefaultAsync(t => t.UserID == userId && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow, ct);
+                        .FirstOrDefaultAsync(t => t.AccessTokenJti == jti && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow, ct);
                 }, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error retrieving active session for UserID: {userId}");
-                throw;
+                _logger.LogError(ex, $"Error retrieving active session for access token ID: {jti}");
+                return null;
             }
         }
 
@@ -201,11 +202,10 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error updating JTI for TokenID: {tokenId}");
-                throw;
             }
         }
 
-        public async Task<UserToken?> GetByTokenIdAsync(Guid tokenId, CancellationToken ct = default)
+        public async Task<UserToken?> GetByTokenIdAsync(Guid jti, CancellationToken ct = default)
         {
             try
             {
@@ -217,13 +217,13 @@ namespace WEB.SERVICES.Service.JWT
                             .ThenInclude(u => u.Role)
                         .Include(t => t.User)
                             .ThenInclude(u => u.Auth)
-                        .FirstOrDefaultAsync(t => t.TokenID == tokenId, ct);
+                        .FirstOrDefaultAsync(t => t.AccessTokenJti == jti.ToString(), ct);
                 }, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error retrieving token by TokenID: {tokenId}");
-                throw;
+                _logger.LogError(ex, $"Error retrieving token by access token ID: {jti}");
+                return null;
             }
         }
 
@@ -251,7 +251,7 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking token by access and refresh token.");
-                throw;
+                return false;
             }
         }
 
