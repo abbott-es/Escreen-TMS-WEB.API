@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Net;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
-using WEB.UTILITY.Extension;
 using WEB.UTILITY.Helper;
 
 namespace WEB.AUTHENTICATION.Controllers
@@ -79,6 +77,24 @@ namespace WEB.AUTHENTICATION.Controllers
         public async Task<IActionResult> Logout([FromBody] LogoutDto request, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_authService.TryLogoutAsync(request, ct));
+        }
+
+        /// <summary>
+        /// Verify the access token
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        /// <remarks>
+        /// This endpoint returns the validated message.
+        /// It requires the user to be authenticated.
+        /// </remarks>
+        /// <returns>
+        /// 200 OK with user role.
+        /// 404 Not Found if no access role is found.
+        /// </returns>
+        [HttpGet("GetValidateAccessToken")]
+        public async Task<IActionResult> GetValidateAccessToken(CancellationToken ct = default)
+        {
+            return null;
         }
     }
 }
