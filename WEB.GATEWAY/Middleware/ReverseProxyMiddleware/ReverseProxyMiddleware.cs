@@ -171,16 +171,6 @@ public class ReverseProxyMiddleware
             using var memoryStream = new MemoryStream();
             context.Response.Body = memoryStream;
 
-            var headers = context.Request.Headers;
-
-            headers["X-Forwarded-For"] = context.Connection.RemoteIpAddress?.ToString();
-            headers["X-Forwarded-Host"] = context.Request.Host.Value;
-            headers["X-Forwarded-Proto"] = context.Request.Scheme;
-            headers["X-Forwarded-PathBase"] = context.Request.PathBase.Value ?? string.Empty;
-            headers["X-Forwarded-Method"] = context.Request.Method;
-            headers["X-Forwarded-Query"] = context.Request.QueryString.Value ?? string.Empty;
-            headers["X-Forwarded-Path"] = context.Request.Path.Value ?? string.Empty;
-
             await _next(context); // Proceed to next middleware
 
             memoryStream.Seek(0, SeekOrigin.Begin);

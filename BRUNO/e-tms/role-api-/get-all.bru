@@ -1,11 +1,11 @@
 meta {
-  name: user
+  name: get-all
   type: http
   seq: 1
 }
 
 get {
-  url: 127.0.0.1:7095
+  url: {{BASE_URL}}/role-api/api/role
   body: none
   auth: inherit
 }

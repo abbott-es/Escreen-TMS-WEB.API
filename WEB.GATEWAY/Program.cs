@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -71,10 +72,19 @@ builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSecti
         // Copy headers from incoming request to proxy request, excluding restricted headers
         foreach (var header in incomingHeaders)
         {
-            if (!restrictedHeaders.Contains(header.Key))
+            if (!restrictedHeaders.Contains(header.Key) &&
+                !header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
             {
                 transformContext.ProxyRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
             }
+        }
+
+        // Safely handle Authorization header
+        if (incomingHeaders.TryGetValue("Authorization", out var authHeader) &&
+            !StringValues.IsNullOrEmpty(authHeader))
+        {
+            transformContext.ProxyRequest.Headers.Remove("Authorization");
+            transformContext.ProxyRequest.Headers.TryAddWithoutValidation("Authorization", authHeader.ToArray());
         }
 
         // Optionally: log or inspect headers for debugging
