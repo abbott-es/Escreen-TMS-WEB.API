@@ -330,7 +330,6 @@ namespace WEB.SERVICES.Service.JWT
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error touching session for TokenID: {tokenId}");
-                throw;
             }
         }
     }

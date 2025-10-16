@@ -83,8 +83,9 @@ namespace WEB.SERVICES.Service.JWT
                     return principal;
                 };
             }
-            catch (Exception e)
+            catch (Exception err)
             {
+                _logger.LogError(err, "Invalid access token");
                 return null;
             }
         }
