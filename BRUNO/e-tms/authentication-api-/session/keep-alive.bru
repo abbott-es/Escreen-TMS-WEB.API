@@ -6,12 +6,8 @@ meta {
 
 post {
   url: {{BASE_URL}}/authentication-api/api/sso/session/keep-alive
-  body: json
-  auth: none
-}
-
-headers {
-  Authorization: {{bearerToken}}
+  body: none
+  auth: inherit
 }
 
 body:json {

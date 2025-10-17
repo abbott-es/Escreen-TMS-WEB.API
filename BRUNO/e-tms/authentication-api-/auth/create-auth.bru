@@ -7,24 +7,20 @@ meta {
 post {
   url: {{BASE_URL}}/authentication-api/api/authentication/create-auth
   body: json
-  auth: none
-}
-
-headers {
-  Authorization: {{bearerToken}}
+  auth: inherit
 }
 
 body:json {
   {
     "RoleID": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB" ,
     "Auth" :{
-    "Username": "test",
-    "Password": "test"
+    "Username": "test2",
+    "Password": "test2"
     } , 
     "UserInfo" : { 
       "FirstName" : "secret",
       "LastName" : "details",
-      "Email" : "test@test.com",
+      "Email" : "test2@test.com",
       "ContactNumber": "0"
     }
   }
