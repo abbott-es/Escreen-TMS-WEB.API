@@ -81,8 +81,8 @@ namespace WEB.SERVICES.Service
                     await _repository.AddAsync(entity, c);
                 }, ct);
 
-                var idProp = typeof(TEntity).GetProperty("Id");
-                return Prelude.Right(ApiResponse<Guid>.Ok(idProp != null ? (Guid)idProp.GetValue(entity)! : Guid.Empty));
+                var idProp = typeof(TEntity).GetProperty("ID");
+                return Prelude.Right(ApiResponse<Guid>.Ok(idProp != null ? (Guid)idProp.GetValue(entity)! : Guid.Empty, HttpStatusCode.OK, "Created Successfully"));
             }
             catch (Exception ex)
             {
