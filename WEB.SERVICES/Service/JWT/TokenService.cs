@@ -57,7 +57,7 @@ namespace WEB.SERVICES.Service.JWT
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
-        public Try<ClaimsPrincipal> ValidateAccessToken(string accessToken)
+        public Try<ClaimsPrincipal> ValidateAccessToken(string accessToken, bool isValidateLifetime)
         {
             try
             {
@@ -68,7 +68,7 @@ namespace WEB.SERVICES.Service.JWT
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey)),
                     ValidAlgorithms = new string[] { SecurityAlgorithms.HmacSha256 },
-                    ValidateLifetime = false,
+                    ValidateLifetime = isValidateLifetime,
                     ValidAudience = _settings.Audience,
                     ValidIssuer = _settings.Issuer,
                 };

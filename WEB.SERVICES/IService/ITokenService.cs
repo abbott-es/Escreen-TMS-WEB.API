@@ -8,6 +8,6 @@ namespace WEB.SERVICES.IService
     {
         (string accessToken, string jti) GenerateAccessToken(User user);
         string GenerateRefreshToken();
-        Try<ClaimsPrincipal> ValidateAccessToken(string accessToken);
+        Try<ClaimsPrincipal> ValidateAccessToken(string accessToken, bool isValidateLifetime);
     }
 }

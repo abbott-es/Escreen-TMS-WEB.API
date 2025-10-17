@@ -32,7 +32,7 @@ namespace WEB.SERVICES.Service
             _userContextService = userContextService;
         }
 
-        private async Task<User> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        private async Task<User> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
         {
             try
             {
@@ -41,7 +41,7 @@ namespace WEB.SERVICES.Service
                         .Include(x => x.Role)
                         .Include(uf => uf.UserInfo)
                         .Include(uf => uf.Auth)
-                        .FirstOrDefaultAsync(a => a.UserID == Guid.Parse(userID) && a.IsActive, ct);
+                        .FirstOrDefaultAsync(a => a.UserID == userID && a.IsActive, ct);
                 return user;
             }
             catch (Exception ex)
@@ -51,7 +51,7 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        public async Task<Either<ApiResponse<string>, ApiResponse<UserDto>>> GetUserDtoByIdAsync(string userID, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<UserDto>>> GetUserDtoByIdAsync(Guid userID, CancellationToken ct = default)
         {
             var user = await GetUserByIdAsync(userID, ct);
             if (user == null)
@@ -62,7 +62,7 @@ namespace WEB.SERVICES.Service
 
         public async Task<Either<ApiResponse<string>, ApiResponse<string>>> GetActiveUserRoleAsync(CancellationToken ct = default)
         {
-            var user = await GetUserByIdAsync(_userContextService.UserId, ct);
+            var user = await GetUserByIdAsync(Guid.Parse(_userContextService.UserId), ct);
             if (user == null)
                 return Prelude.Left(ApiResponse<string>.Fail(["Invalid Authenticated User"], HttpStatusCode.NotFound));
 
