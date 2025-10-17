@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 
@@ -66,13 +67,13 @@ namespace WEB.API.Controllers
         /// <summary>
         /// Deletes a list of entities by their IDs.
         /// </summary>
-        /// <param name="ids">The list of GUIDs representing entities to delete.</param>
+        /// <param name="genericFiendList">The list of GUIDs representing entities to delete.</param>
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating how many entities were deleted or failure.</returns>
         [HttpDelete]
-        public virtual async Task<IActionResult> DeleteListAsync([FromBody] IEnumerable<Guid> ids, CancellationToken ct)
+        public virtual async Task<IActionResult> DeleteListAsync([FromBody] GenericFiendListDto genericFiendList, CancellationToken ct)
         {
-            return await ResultMatcher.MatchResultAsync(_genericService.DeleteListAsync(ids, ct));
+            return await ResultMatcher.MatchResultAsync(_genericService.DeleteListAsync(genericFiendList.ID, ct));
         }
     }
 }

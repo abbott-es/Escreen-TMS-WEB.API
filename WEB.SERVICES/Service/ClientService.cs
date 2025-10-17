@@ -1,7 +1,10 @@
-﻿using Dapper;
+﻿using System.Net;
+using Dapper;
+using LanguageExt;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.IService;
+using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
 
 namespace WEB.SERVICES.Service
@@ -14,11 +17,11 @@ namespace WEB.SERVICES.Service
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<bool> DeleteListAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> DeleteListAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
         {
             try
             {
-                return await _unitOfWork.ExecuteAsync(async (conn, tran, ct) =>
+                await _unitOfWork.ExecuteAsync(async (conn, tran, ct) =>
                 {
                     var userIds = (await conn.QueryAsync<Guid>(
                         "SELECT UserID FROM [Client] WHERE ClientID IN @ClientIDs",
@@ -32,11 +35,12 @@ namespace WEB.SERVICES.Service
                     await conn.ExecuteAsync(sql, new { ClientIDs = ids, UserIDs = userIds }, tran);
                     return true;
                 }, ct);
+                return Prelude.Right(ApiResponse<string>.Ok("Deleted Successfully"));
             }
             catch (Exception err)
             {
                 _logger.LogError(err, "Error deleting clients");
-                throw;
+                return Prelude.Left(ApiResponse<string>.Fail(["Error deleting clients"], HttpStatusCode.InternalServerError));
             }
         }
     }

@@ -1,11 +1,7 @@
 ﻿using AutoMapper;
-using Azure;
-using Azure.Core;
-using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using FluentValidation;
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using WEB.DOMAIN.Entity;
@@ -164,29 +160,25 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var jti = _tokenLifecycleService.GetJtiFromToken(_userContextService.AccessToken);
-                if (jti == null)
-                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token"], HttpStatusCode.NotFound));
-
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(jti, ct);
-                if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
-                {
-                    return Prelude.Left(ApiResponse<string>.Fail(["No active session"], HttpStatusCode.NotFound));
-                }
+                string msg = ValidateAccessToken(true);
+                if (!string.IsNullOrEmpty(msg))
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        [msg],
+                        HttpStatusCode.NotFound));
 
                 if (isKeepAlive)
                 {
+                    var jti = _tokenLifecycleService.GetJtiFromToken(_userContextService.AccessToken);
+                    if (jti == null)
+                        return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token jti"], HttpStatusCode.NotFound));
+                    var session = await _tokenLifecycleService.GetActiveSessionAsync(jti, ct);
+                    if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
+                    {
+                        return Prelude.Left(ApiResponse<string>.Fail(["No active session"], HttpStatusCode.NotFound));
+                    }
                     await _tokenLifecycleService.TouchSessionAsync(session.TokenID, ct);
                 }
-
-                var info = new SessionInfoDto
-                {
-                    RefreshToken = session.RefreshToken,
-                    AccessToken = _userContextService.AccessToken
-                };
-
-                return Prelude.Right(ApiResponse<SessionInfoDto>
-                    .Ok(info, "Session retrieved"));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(null, HttpStatusCode.NoContent));
             }
             catch (Exception ex)
             {
@@ -245,7 +237,7 @@ namespace WEB.SERVICES.Service
                     AccessToken = token.accessToken,
                     RefreshToken = tokenRecord.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "Login Successful"));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, HttpStatusCode.OK, "Login Successful"));
             }
             catch (Exception ex)
             {
@@ -262,31 +254,12 @@ namespace WEB.SERVICES.Service
                         ["Empty refresh token"],
                         HttpStatusCode.NotFound));
 
-                var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, false);
-                if (jti == null)
-                {
+                string msg = ValidateAccessToken(false);
+                if (!string.IsNullOrEmpty(msg))
                     return Prelude.Left(ApiResponse<string>.Fail(
-                        ["Invalid access token"],
+                        [msg],
                         HttpStatusCode.NotFound));
-                }
-                try
-                {
-                    var principal = jti(); // Invoke the delegate
-                    if (principal == null)
-                    {
-                        return Prelude.Left(ApiResponse<string>.Fail(
-                            ["Access token validation returned null principal"],
-                            HttpStatusCode.Unauthorized));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Access token validation failed.");
 
-                    return Prelude.Left(ApiResponse<string>.Fail(
-                        ["Access token validation failed"],
-                        HttpStatusCode.Unauthorized));
-                }
                 var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
                 if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired refresh token"], HttpStatusCode.NotFound));
@@ -302,7 +275,7 @@ namespace WEB.SERVICES.Service
                     AccessToken = newToken.accessToken,
                     RefreshToken = token.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "New Access Token has been issued"));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, HttpStatusCode.OK, "New Access Token has been issued"));
             }
             catch (Exception ex)
             {
@@ -349,32 +322,37 @@ namespace WEB.SERVICES.Service
 
         public async Task<Either<ApiResponse<string>, ApiResponse<string>>> TryValidateAccessToken(CancellationToken ct)
         {
-            var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, true);
+            string msg = ValidateAccessToken(true);
+            if (!string.IsNullOrEmpty(msg))
+                return Prelude.Left(ApiResponse<string>.Fail(
+                    [msg],
+                    HttpStatusCode.NotFound));
+            return Prelude.Right(ApiResponse<string>.Ok("Access token is valid"));
+        }
+
+        private string ValidateAccessToken(bool isValidLifetime)
+        {
+            string errMsg = string.Empty;
+            ClaimsPrincipal prin = null;
+            var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, isValidLifetime);
             if (jti == null)
             {
-                return Prelude.Left(ApiResponse<string>.Fail(
-                    ["Invalid access token"],
-                    HttpStatusCode.NotFound));
+                errMsg = "Invalid access token";
             }
             try
             {
                 var principal = jti(); // Invoke the delegate
                 if (principal == null)
                 {
-                    return Prelude.Left(ApiResponse<string>.Fail(
-                        ["Access token validation returned null principal"],
-                        HttpStatusCode.Unauthorized));
+                    errMsg = "Access token validation returned null principal";
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Access token validation failed.");
-
-                return Prelude.Left(ApiResponse<string>.Fail(
-                    ["Access token validation failed"],
-                    HttpStatusCode.Unauthorized));
+                errMsg = "Access token validation failed";
             }
-            return Prelude.Right(ApiResponse<string>.Ok("Access token is valid"));
+            return errMsg;
         }
     }
 }
