@@ -1,0 +1,19 @@
+meta {
+  name: get-one
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/role-api/api/role/{{id}}
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  id: guid
+}
+
+settings {
+  encodeUrl: true
+}

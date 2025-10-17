@@ -1,13 +1,12 @@
 ﻿using LanguageExt;
-using WEB.DOMAIN.Entity;
 using WEB.SERVICES.DTO;
+using WEB.UTILITY.Helper;
 
 namespace WEB.SERVICES.IService
 {
     public interface IUserService
     {
-        Task<UserDto?> GetByEmailAsync(string email, CancellationToken ct = default);
-        Task<User> GetUserByIdAsync(string userId, CancellationToken ct = default);
-        Task<UserDto> GetUserDtoByIdAsync(string userID, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<UserDto>>> GetUserDtoByIdAsync(Guid userID, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<string>>> GetActiveUserRoleAsync(CancellationToken ct = default);
     }
 }

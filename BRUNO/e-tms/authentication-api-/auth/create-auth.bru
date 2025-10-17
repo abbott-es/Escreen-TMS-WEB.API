@@ -1,0 +1,31 @@
+meta {
+  name: create-auth
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/authentication/create-auth
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "RoleID": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB" ,
+    "Auth" :{
+    "Username": "test2",
+    "Password": "test2"
+    } , 
+    "UserInfo" : { 
+      "FirstName" : "secret",
+      "LastName" : "details",
+      "Email" : "test2@test.com",
+      "ContactNumber": "0"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

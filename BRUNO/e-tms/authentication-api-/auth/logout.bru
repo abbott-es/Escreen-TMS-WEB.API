@@ -1,0 +1,22 @@
+meta {
+  name: logout
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/authentication/logout
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "accessToken": "guid",
+    "refreshToken0": "guid"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

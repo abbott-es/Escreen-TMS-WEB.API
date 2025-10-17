@@ -25,7 +25,7 @@ namespace WEB.UTILITY.Helper
             }
             catch (Exception ex)
             {
-                throw;
+                return false;
             }
         }
     }

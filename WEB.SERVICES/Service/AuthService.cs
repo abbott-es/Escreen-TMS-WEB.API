@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
 using Azure;
+using Azure.Core;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using FluentValidation;
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
@@ -65,7 +67,7 @@ namespace WEB.SERVICES.Service
                     var errorMessage = string.Join("; ", errors.Select(e => $"{e.ErrorMessage}"));
                     _logger.LogWarning($"User creation failed validation: {errorMessage}");
                     return Prelude.Left(ApiResponse<string>
-                        .Fail(errors.Select(x => x.ErrorMessage).ToList(), HttpStatusCode.Unauthorized));
+                        .Fail(errors.Select(x => x.ErrorMessage).ToList()));
                 }
                 var user = _mapper.Map<User>(authDTO, opts =>
                 {
@@ -95,10 +97,10 @@ namespace WEB.SERVICES.Service
             try
             {
                 var auth = await _authRepository
-                    .Query(asNoTracking: true)
+                    .Query(asNoTracking: false)
+                    .Where(a => a.Username == username && a.User.IsActive)
                     .Include(a => a.User)
-                    .ThenInclude(x => x.Role)
-                    .FirstOrDefaultAsync(a => a.Username == username && a.User.IsActive, ct);
+                    .ThenInclude(x => x.Role).FirstOrDefaultAsync(ct);
 
                 if (auth == null)
                 {
@@ -134,29 +136,24 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        private async Task UpdateLastLoginAsync(string username, CancellationToken ct = default)
+        private async Task UpdateLastLoginAsync(Auth auth, CancellationToken ct = default)
         {
             try
             {
-                var auth = await _authRepository
-                    .Query()
-                    .FirstOrDefaultAsync(a => a.Username == username, ct);
-
                 if (auth != null)
                 {
                     auth.LastLogin = DateTime.UtcNow;
                     _authRepository.Update(auth);
-                    _logger.LogInformation($"Updated LastLogin for user: {username}");
+                    _logger.LogInformation($"Updated LastLogin for user: {auth.Username}");
                 }
                 else
                 {
-                    _logger.LogWarning($"User not found for LastLogin update: {username}");
+                    _logger.LogWarning($"User not found for LastLogin update: {auth.Username}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating LastLogin for user: {username}");
-                throw;
+                _logger.LogError(ex, $"Error updating LastLogin for user: {auth.Username}");
             }
         }
 
@@ -167,14 +164,11 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var userIdStr = user.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrWhiteSpace(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-                {
-                    return Prelude.Left(ApiResponse<string>
-                        .Fail(["User ID not found in claims"], HttpStatusCode.Unauthorized));
-                }
+                var jti = _tokenLifecycleService.GetJtiFromToken(_userContextService.AccessToken);
+                if (jti == null)
+                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token"], HttpStatusCode.NotFound));
 
-                var session = await _tokenLifecycleService.GetActiveSessionAsync(userId, ct);
+                var session = await _tokenLifecycleService.GetActiveSessionAsync(jti, ct);
                 if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["No active session"], HttpStatusCode.NotFound));
@@ -187,11 +181,8 @@ namespace WEB.SERVICES.Service
 
                 var info = new SessionInfoDto
                 {
-                    TokenId = session.TokenID,
                     RefreshToken = session.RefreshToken,
-                    AccessToken = _userContextService.AccessToken,
-                    AccessTokenJti = session.AccessTokenJti,
-                    ExpiryIn = session.RefreshTokenExpiry
+                    AccessToken = _userContextService.AccessToken
                 };
 
                 return Prelude.Right(ApiResponse<SessionInfoDto>
@@ -204,36 +195,31 @@ namespace WEB.SERVICES.Service
             }
         }
 
-
-        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryCreateSessionAsync(Guid tokenId, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryCreateSessionAsync(Guid jti, CancellationToken ct = default)
         {
             try
             {
-                var session = await _tokenLifecycleService.GetByTokenIdAsync(tokenId, ct);
+                var session = await _tokenLifecycleService.GetByTokenIdAsync(jti, ct);
                 if (session == null || session.IsRevoked || session.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired session"], HttpStatusCode.Unauthorized));
                 }
 
-                var user = session.User;
-                var newToken = _tokenService.GenerateAccessToken(user);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
+                var newToken = _tokenService.GenerateAccessToken(session.User);
 
-                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(tokenId, newJti, ct);
+                await _tokenLifecycleService.UpdateAccessTokenJtiAsync(session.TokenID, newToken.jti, ct);
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = newToken.accessToken,
-                    RefreshToken = session.RefreshToken,
-                    TokenId = tokenId,
-                    ExpiryIn = newToken.expiresIn
+                    RefreshToken = session.RefreshToken
                 };
 
                 return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating session for TokenID: {tokenId}");
+                _logger.LogError(ex, $"Error creating session for access token ID: {jti}");
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
@@ -245,24 +231,21 @@ namespace WEB.SERVICES.Service
                 if (user == null)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid Credentials"], HttpStatusCode.NotFound));
 
-                await UpdateLastLoginAsync(authDto.Username, ct);
+                await UpdateLastLoginAsync(user.Auth, ct);
 
                 var token = _tokenService.GenerateAccessToken(user);
-                if (!JwtHelper.TryExtractJti(token.accessToken, out var jti))
+
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, token.jti, ct);
+                if (tokenRecord == null)
                 {
-                    return Prelude.Left(ApiResponse<string>.Fail(["Failed to parse token identifier"]));
+                    return Prelude.Left(ApiResponse<string>.Fail(["Not able to issue token"]));
                 }
-
-                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, jti, ct);
-
                 var response = new SessionInfoDto
                 {
                     AccessToken = token.accessToken,
-                    RefreshToken = tokenRecord.RefreshToken,
-                    TokenId = tokenRecord.TokenID,
-                    ExpiryIn = token.expiresIn
+                    RefreshToken = tokenRecord.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "Login Successful"));
             }
             catch (Exception ex)
             {
@@ -270,28 +253,56 @@ namespace WEB.SERVICES.Service
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
-        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string? refreshToken, CancellationToken ct = default)
         {
             try
             {
+                if (string.IsNullOrEmpty(refreshToken))
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Empty refresh token"],
+                        HttpStatusCode.NotFound));
+
+                var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, false);
+                if (jti == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Invalid access token"],
+                        HttpStatusCode.NotFound));
+                }
+                try
+                {
+                    var principal = jti(); // Invoke the delegate
+                    if (principal == null)
+                    {
+                        return Prelude.Left(ApiResponse<string>.Fail(
+                            ["Access token validation returned null principal"],
+                            HttpStatusCode.Unauthorized));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Access token validation failed.");
+
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Access token validation failed"],
+                        HttpStatusCode.Unauthorized));
+                }
                 var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
                 if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired refresh token"], HttpStatusCode.NotFound));
 
                 var newToken = _tokenService.GenerateAccessToken(token.User);
-                var newJti = new JwtSecurityTokenHandler().ReadJwtToken(newToken.accessToken).Id;
 
-                token.AccessTokenJti = newJti;
-                await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, ct);
+                var updatedToken = await _tokenLifecycleService.RotateRefreshTokenAsync(token.TokenID, newToken.jti, ct);
+                if (updatedToken == null)
+                    return Prelude.Left(ApiResponse<string>.Fail(["Not able to generate new access token"], HttpStatusCode.InternalServerError));
 
                 var response = new SessionInfoDto
                 {
                     AccessToken = newToken.accessToken,
-                    RefreshToken = token.RefreshToken,
-                    TokenId = token.TokenID,
-                    ExpiryIn = newToken.expiresIn
+                    RefreshToken = token.RefreshToken
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response));
+                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, "New Access Token has been issued"));
             }
             catch (Exception ex)
             {
@@ -312,6 +323,7 @@ namespace WEB.SERVICES.Service
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
+
         public async Task<Either<ApiResponse<string>, ApiResponse<string>>> TryLogoutAsync(LogoutDto request, CancellationToken ct)
         {
             try
@@ -335,5 +347,34 @@ namespace WEB.SERVICES.Service
             }
         }
 
+        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> TryValidateAccessToken(CancellationToken ct)
+        {
+            var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, true);
+            if (jti == null)
+            {
+                return Prelude.Left(ApiResponse<string>.Fail(
+                    ["Invalid access token"],
+                    HttpStatusCode.NotFound));
+            }
+            try
+            {
+                var principal = jti(); // Invoke the delegate
+                if (principal == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Access token validation returned null principal"],
+                        HttpStatusCode.Unauthorized));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Access token validation failed.");
+
+                return Prelude.Left(ApiResponse<string>.Fail(
+                    ["Access token validation failed"],
+                    HttpStatusCode.Unauthorized));
+            }
+            return Prelude.Right(ApiResponse<string>.Ok("Access token is valid"));
+        }
     }
 }

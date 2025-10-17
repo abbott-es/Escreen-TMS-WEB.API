@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 
@@ -53,7 +54,7 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <summary>
         /// Creates a new access token using a valid token session.
         /// </summary>
-        /// <param name="tokenId">The ID of the token session.</param>
+        /// <param name="accessTokenJti">The ID of the access token session.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <remarks>
         /// This endpoint is used to restore a session by issuing a new access token using a valid, non-revoked token.
@@ -62,10 +63,11 @@ namespace WEB.AUTHENTICATION.Controllers
         /// 200 OK with a new access token if the session is valid.
         /// 401 Unauthorized if the session is invalid, revoked, or expired.
         /// </returns>
+
         [HttpPost("create-session")]
-        public async Task<IActionResult> CreateSession([FromBody] Guid tokenId, CancellationToken ct = default)
+        public async Task<IActionResult> CreateSession([FromBody] GenericFieldDto genericFieldDto, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(tokenId, ct));
+            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(genericFieldDto.ID, ct));
         }
     }
 }

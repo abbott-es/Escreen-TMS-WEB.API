@@ -1,0 +1,21 @@
+meta {
+  name: revoke
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{BASE_URL}}/authentication-api/api/authentication/revoke
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "tokenId": "guid"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

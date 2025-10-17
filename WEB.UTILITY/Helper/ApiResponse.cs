@@ -6,7 +6,7 @@ namespace WEB.UTILITY.Helper
     {
         public HttpStatusCode StatusCode { get; set; }
         public bool Success { get; set; }
-        public T? Data { get; set; }
+        public T? Response { get; set; }
         public string? Message { get; set; }
         public List<string>? Errors { get; set; }
         public string? TraceId { get; set; }
@@ -16,7 +16,7 @@ namespace WEB.UTILITY.Helper
             {
                 StatusCode = HttpStatusCode.OK,
                 Success = true,
-                Data = data,
+                Response = data,
                 Message = message,
                 TraceId = traceId
             };

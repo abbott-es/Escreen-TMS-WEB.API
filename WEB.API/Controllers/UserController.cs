@@ -8,11 +8,11 @@ namespace WEB.API.Controllers
     [Route("api/v1/[controller]")]
     [ApiController]
 
-    public class UserController 
+    public class UserController
     {
         private readonly IUserService _userService;
 
-        public UserController(IUserService userService) 
+        public UserController(IUserService userService)
         {
             _userService = userService;
         }
@@ -31,28 +31,27 @@ namespace WEB.API.Controllers
         /// 404 Not Found if no user is found.
         /// </returns>
         [HttpGet("GetUserByID/{userID}")]
-        public async Task<IActionResult> GetUserByIdAsync(string userID, CancellationToken ct = default)
+        public async Task<IActionResult> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
         {
-            try
-            {
-                var user = await _userService.GetUserDtoByIdAsync(userID, ct);
-                if (user == null)
-                {
-                    return ApiResponse<string>
-                        .Fail(["No user found"])
-                        .ToNotFoundResult();
-                }
+            return await ResultMatcher.MatchResultAsync(_userService.GetUserDtoByIdAsync(userID, ct));
+        }
 
-                return ApiResponse<object>
-                    .Ok(user, "User retrieved")
-                    .ToOkResult();
-            }
-            catch
-            {
-                return ApiResponse<string>
-                    .Fail(["Internal Server Error"])
-                    .ToInternalServerErrorResult();
-            }
+        /// <summary>
+        /// Retrieves the user role name.
+        /// </summary>
+        /// <param name="ct">Cancellation token.</param>
+        /// <remarks>
+        /// This endpoint returns the user role.
+        /// It requires the user to be authenticated.
+        /// </remarks>
+        /// <returns>
+        /// 200 OK with user role.
+        /// 404 Not Found if no user role is found.
+        /// </returns>
+        [HttpGet("GetUserRole")]
+        public async Task<IActionResult> GetActiveUserRoleAsync(CancellationToken ct = default)
+        {
+            return await ResultMatcher.MatchResultAsync(_userService.GetActiveUserRoleAsync(ct));
         }
     }
 }
