@@ -18,5 +18,6 @@ namespace WEB.SERVICES.IService
         Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string refreshToken, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<string>>> TryRevokeTokenAsync(Guid tokenId, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<string>>> TryLogoutAsync(LogoutDto request, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<string>>> TryValidateAccessToken(CancellationToken ct);
     }
 }

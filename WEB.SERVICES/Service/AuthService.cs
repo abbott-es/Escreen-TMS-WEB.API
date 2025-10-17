@@ -96,10 +96,10 @@ namespace WEB.SERVICES.Service
             try
             {
                 var auth = await _authRepository
-                    .Query(asNoTracking: true)
+                    .Query(asNoTracking: false)
+                    .Where(a => a.Username == username && a.User.IsActive)
                     .Include(a => a.User)
-                    .ThenInclude(x => x.Role)
-                    .FirstOrDefaultAsync(a => a.Username == username && a.User.IsActive, ct);
+                    .ThenInclude(x => x.Role).FirstOrDefaultAsync(ct);
 
                 if (auth == null)
                 {
@@ -135,29 +135,24 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        private async Task UpdateLastLoginAsync(string username, CancellationToken ct = default)
+        private async Task UpdateLastLoginAsync(Auth auth, CancellationToken ct = default)
         {
             try
             {
-                var auth = await _authRepository
-                    .Query()
-                    .FirstOrDefaultAsync(a => a.Username == username, ct);
-
                 if (auth != null)
                 {
                     auth.LastLogin = DateTime.UtcNow;
                     _authRepository.Update(auth);
-                    _logger.LogInformation($"Updated LastLogin for user: {username}");
+                    _logger.LogInformation($"Updated LastLogin for user: {auth.Username}");
                 }
                 else
                 {
-                    _logger.LogWarning($"User not found for LastLogin update: {username}");
+                    _logger.LogWarning($"User not found for LastLogin update: {auth.Username}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating LastLogin for user: {username}");
-                throw;
+                _logger.LogError(ex, $"Error updating LastLogin for user: {auth.Username}");
             }
         }
 
@@ -235,7 +230,7 @@ namespace WEB.SERVICES.Service
                 if (user == null)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid Credentials"], HttpStatusCode.NotFound));
 
-                await UpdateLastLoginAsync(authDto.Username, ct);
+                await UpdateLastLoginAsync(user.Auth, ct);
 
                 var token = _tokenService.GenerateAccessToken(user);
 
@@ -261,10 +256,31 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken);
+                var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, false);
                 if (jti == null)
-                    return Prelude.Left(ApiResponse<string>.Fail(["Invalid access token"], HttpStatusCode.NotFound));
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Invalid access token"],
+                        HttpStatusCode.NotFound));
+                }
+                try
+                {
+                    var principal = jti(); // Invoke the delegate
+                    if (principal == null)
+                    {
+                        return Prelude.Left(ApiResponse<string>.Fail(
+                            ["Access token validation returned null principal"],
+                            HttpStatusCode.Unauthorized));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Access token validation failed.");
 
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Access token validation failed"],
+                        HttpStatusCode.Unauthorized));
+                }
                 var token = await _tokenLifecycleService.GetByRefreshTokenAsync(refreshToken);
                 if (token == null || token.RefreshTokenExpiry < DateTime.UtcNow)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid or expired refresh token"], HttpStatusCode.NotFound));
@@ -301,6 +317,7 @@ namespace WEB.SERVICES.Service
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
+
         public async Task<Either<ApiResponse<string>, ApiResponse<string>>> TryLogoutAsync(LogoutDto request, CancellationToken ct)
         {
             try
@@ -324,5 +341,34 @@ namespace WEB.SERVICES.Service
             }
         }
 
+        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> TryValidateAccessToken(CancellationToken ct)
+        {
+            var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, true);
+            if (jti == null)
+            {
+                return Prelude.Left(ApiResponse<string>.Fail(
+                    ["Invalid access token"],
+                    HttpStatusCode.NotFound));
+            }
+            try
+            {
+                var principal = jti(); // Invoke the delegate
+                if (principal == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Access token validation returned null principal"],
+                        HttpStatusCode.Unauthorized));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Access token validation failed.");
+
+                return Prelude.Left(ApiResponse<string>.Fail(
+                    ["Access token validation failed"],
+                    HttpStatusCode.Unauthorized));
+            }
+            return Prelude.Right(ApiResponse<string>.Ok("Access token is valid"));
+        }
     }
 }

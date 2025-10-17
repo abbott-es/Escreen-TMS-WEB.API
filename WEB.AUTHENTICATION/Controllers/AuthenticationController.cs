@@ -94,7 +94,7 @@ namespace WEB.AUTHENTICATION.Controllers
         [HttpGet("GetValidateAccessToken")]
         public async Task<IActionResult> GetValidateAccessToken(CancellationToken ct = default)
         {
-            return null;
+            return await ResultMatcher.MatchResultAsync(_authService.TryValidateAccessToken(ct));
         }
     }
 }
