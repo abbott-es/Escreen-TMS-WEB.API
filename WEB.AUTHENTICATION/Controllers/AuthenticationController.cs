@@ -46,7 +46,7 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <summary>
         /// Refreshes an expired access token using a valid refresh token.
         /// </summary>
-        /// <param name="refreshToken">The refresh token request.</param>
+        /// <param name="sessionInfo">The refresh token request.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK with new tokens, 401 Unauthorized if token is invalid or expired.</returns>
         [HttpPost("refresh-token")]
@@ -58,7 +58,7 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <summary>
         /// Revokes access token by its ID.
         /// </summary>
-        /// <param name="tokenId">The request containing the token ID to revoke.</param>
+        /// <param name="genericFieldDto">The request containing the token ID to revoke.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK if the token was successfully revoked.</returns>
         [HttpPost("revoke")]

@@ -57,7 +57,7 @@ namespace WEB.SERVICES.Service
             if (user == null)
                 return Prelude.Left(ApiResponse<string>.Fail(["Invalid User ID"], HttpStatusCode.NotFound));
 
-            return Prelude.Right(ApiResponse<UserDto>.Ok(_mapper.Map<UserDto>(user), "User successfully retrieved"));
+            return Prelude.Right(ApiResponse<UserDto>.Ok(_mapper.Map<UserDto>(user), HttpStatusCode.OK, "User successfully retrieved"));
         }
 
         public async Task<Either<ApiResponse<string>, ApiResponse<string>>> GetActiveUserRoleAsync(CancellationToken ct = default)
@@ -66,7 +66,7 @@ namespace WEB.SERVICES.Service
             if (user == null)
                 return Prelude.Left(ApiResponse<string>.Fail(["Invalid Authenticated User"], HttpStatusCode.NotFound));
 
-            return Prelude.Right(ApiResponse<string>.Ok(user.Role.RoleName, "User role successfully retrieved"));
+            return Prelude.Right(ApiResponse<string>.Ok(user.Role.RoleName, HttpStatusCode.OK, "User role successfully retrieved"));
         }
 
         //sample dapper use

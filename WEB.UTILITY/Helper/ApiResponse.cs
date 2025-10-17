@@ -11,10 +11,10 @@ namespace WEB.UTILITY.Helper
         public List<string>? Errors { get; set; }
         public string? TraceId { get; set; }
 
-        public static ApiResponse<T> Ok(T data, string? message = null, string? traceId = null) =>
+        public static ApiResponse<T> Ok(T data, HttpStatusCode statusCode = HttpStatusCode.OK, string? message = null, string? traceId = null) =>
             new()
             {
-                StatusCode = HttpStatusCode.OK,
+                StatusCode = statusCode,
                 Success = true,
                 Response = data,
                 Message = message,

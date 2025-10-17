@@ -6,6 +6,11 @@ namespace WEB.UTILITY.Extension
 {
     public static class ApiResponseExtensions
     {
+
+        public static IActionResult ToOkNoContent<T>(this ApiResponse<T> response)
+        {
+            return new NoContentResult();
+        }
         public static IActionResult ToOkResult<T>(this ApiResponse<T> response)
         {
             return new OkObjectResult(response);
