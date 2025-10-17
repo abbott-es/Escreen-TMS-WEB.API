@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 
@@ -62,10 +63,11 @@ namespace WEB.AUTHENTICATION.Controllers
         /// 200 OK with a new access token if the session is valid.
         /// 401 Unauthorized if the session is invalid, revoked, or expired.
         /// </returns>
+
         [HttpPost("create-session")]
-        public async Task<IActionResult> CreateSession([FromBody] Guid accessTokenJti, CancellationToken ct = default)
+        public async Task<IActionResult> CreateSession([FromBody] GenericFieldDto genericFieldDto, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(accessTokenJti, ct));
+            return await ResultMatcher.MatchResultAsync(_authService.TryCreateSessionAsync(genericFieldDto.ID, ct));
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Azure;
 using Azure.Core;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using FluentValidation;
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
@@ -252,10 +253,15 @@ namespace WEB.SERVICES.Service
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
-        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string? refreshToken, CancellationToken ct = default)
         {
             try
             {
+                if (string.IsNullOrEmpty(refreshToken))
+                    return Prelude.Left(ApiResponse<string>.Fail(
+                        ["Empty refresh token"],
+                        HttpStatusCode.NotFound));
+
                 var jti = _tokenService.ValidateAccessToken(_userContextService.AccessToken, false);
                 if (jti == null)
                 {

@@ -50,9 +50,9 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK with new tokens, 401 Unauthorized if token is invalid or expired.</returns>
         [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken, CancellationToken ct = default)
+        public async Task<IActionResult> RefreshToken([FromBody] SessionInfoDto sessionInfo, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_authService.TryRefreshTokenAsync(refreshToken, ct));
+            return await ResultMatcher.MatchResultAsync(_authService.TryRefreshTokenAsync(sessionInfo.RefreshToken, ct));
         }
 
         /// <summary>
@@ -62,9 +62,9 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <param name="ct">Cancellation token.</param>
         /// <returns>200 OK if the token was successfully revoked.</returns>
         [HttpPost("revoke")]
-        public async Task<IActionResult> RevokeToken([FromBody] Guid tokenId, CancellationToken ct = default)
+        public async Task<IActionResult> RevokeToken([FromBody] GenericFieldDto genericFieldDto, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_authService.TryRevokeTokenAsync(tokenId, ct));
+            return await ResultMatcher.MatchResultAsync(_authService.TryRevokeTokenAsync(genericFieldDto.ID, ct));
         }
 
         /// <summary>
