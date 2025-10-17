@@ -23,6 +23,7 @@ namespace WEB.UTILITY.Helper
             return response.StatusCode switch
             {
                 HttpStatusCode.OK => response.ToOkResult(),
+                HttpStatusCode.NoContent => response.ToOkNoContent(),
                 HttpStatusCode.Created => response.ToCreatedResult(),
                 HttpStatusCode.BadRequest => response.ToBadRequestResult(),
                 HttpStatusCode.NotFound => response.ToNotFoundResult(),

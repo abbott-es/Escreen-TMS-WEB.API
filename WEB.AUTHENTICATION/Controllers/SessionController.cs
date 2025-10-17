@@ -54,7 +54,7 @@ namespace WEB.AUTHENTICATION.Controllers
         /// <summary>
         /// Creates a new access token using a valid token session.
         /// </summary>
-        /// <param name="accessTokenJti">The ID of the access token session.</param>
+        /// <param name="genericFieldDto">The ID of the access token session.</param>
         /// <param name="ct">Cancellation token.</param>
         /// <remarks>
         /// This endpoint is used to restore a session by issuing a new access token using a valid, non-revoked token.
