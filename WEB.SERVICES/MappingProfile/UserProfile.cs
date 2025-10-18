@@ -25,6 +25,9 @@ namespace WEB.SERVICES.MappingProfile
                 .ForMember(dest => dest.RoleID, opt => opt.MapFrom(src => src.RoleID))
                 .ForMember(dest => dest.Auth, opt => opt.MapFrom(src => src.Auth))
                 .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
+
+            CreateMap<UpdateUserDto, User>()
+                .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
         }
     }
 }

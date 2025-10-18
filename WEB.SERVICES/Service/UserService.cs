@@ -94,11 +94,25 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var entity = _mapper.Map<User>(dto);
+
+                var existingUser = await _userRepository
+                    .Query(asNoTracking: true)
+                    .Where(a => a.UserID == dto.UserID && a.IsActive)
+                    .Include(a => a.UserInfo)
+                    .Include(x => x.Role).FirstOrDefaultAsync(ct);
+                if (existingUser == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(["User not found"], HttpStatusCode.NotFound));
+                }
+
+                // Map updated fields onto the tracked entity
+                _mapper.Map(dto, existingUser);
+
                 await _unitOfWork.ExecuteAsync(async c =>
                 {
-                    _userRepository.Update(entity, u => u.UserInfo);
+                    _userRepository.Update(existingUser, u => u.UserInfo);
                 }, ct);
+
                 return Prelude.Right(ApiResponse<string>.Ok("Update Successfully"));
             }
             catch (Exception ex)

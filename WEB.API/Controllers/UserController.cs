@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
-using WEB.SERVICES.Service;
 using WEB.UTILITY.Helper;
 
 namespace WEB.API.Controllers
@@ -48,7 +47,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPut]
-        public virtual async Task<IActionResult> Update([FromBody] UpdateUserDto entity, CancellationToken ct = default)
+        public async Task<IActionResult> Update([FromBody] UpdateUserDto entity, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_userService.UpdateUserAsync(entity, ct));
         }

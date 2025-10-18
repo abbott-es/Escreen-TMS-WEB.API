@@ -8,7 +8,7 @@ namespace WEB.SERVICES.DTO
 
     public class UpdateUserDto
     {
-        public Guid? UserID { get; set; }
+        public Guid UserID { get; set; }
         public Guid RoleID { get; set; }
         public UserInfoDto UserInfo { get; set; }
     }
