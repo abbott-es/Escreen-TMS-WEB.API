@@ -94,7 +94,6 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-
                 var existingUser = await _userRepository
                     .Query(asNoTracking: true)
                     .Where(a => a.UserID == dto.UserID && a.IsActive)
