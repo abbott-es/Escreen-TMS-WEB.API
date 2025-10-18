@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Linq.Expressions;
+using System.Reflection;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.DOMAIN.Resolver;
@@ -18,18 +19,26 @@ namespace WEB.DAL.Repository
             _dbSet = _context.Set<T>();
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths)
+        public async Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths)
         {
             IQueryable<T> query = _dbSet;
 
             if (asNoTracking)
                 query = query.AsNoTracking();
 
-            foreach (var include in includePaths)
-                query = query.Include(include);
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+            if(includePaths != null)
+            {
+                foreach (var include in includePaths)
+                    query = query.Include(include);
+            }
 
             return await query.ToListAsync(ct);
         }
+
 
         public async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
@@ -46,7 +55,27 @@ namespace WEB.DAL.Repository
         public Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
             => _dbSet.AddRangeAsync(entities, ct);
 
-        public void Update(T entity) => _dbSet.Update(entity);
+        public void Update(T entity, params Expression<Func<T, object>>[] modifiedNavigations)
+        {
+            _dbSet.Attach(entity);
+            _context.Entry(entity).State = EntityState.Modified;
+
+            foreach (var nav in modifiedNavigations)
+            {
+                var memberExpression = nav.Body as MemberExpression ?? (nav.Body is UnaryExpression unary ? unary.Operand as MemberExpression : null);
+
+                if (memberExpression == null) continue;
+
+                var propertyInfo = memberExpression.Member as PropertyInfo;
+                if (propertyInfo == null) continue;
+
+                var value = propertyInfo.GetValue(entity);
+                if (value != null)
+                {
+                    _context.Entry(entity).Reference(nav).TargetEntry.State = EntityState.Modified;
+                }
+            }
+        }
 
         public void Delete(T entity) => _dbSet.Remove(entity);
 

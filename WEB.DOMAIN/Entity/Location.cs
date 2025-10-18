@@ -11,6 +11,6 @@ namespace WEB.DOMAIN.Entity
         public string Type { get; set; }
 
         public Guid? ClientID { get; set; }
-        public Client Client { get; set; }
+        public Client? Client { get; set; }
     }
 }

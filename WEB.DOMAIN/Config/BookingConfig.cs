@@ -28,19 +28,19 @@ namespace WEB.DOMAIN.Config
                    .HasForeignKey(b => b.LocationID)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(b => b.TruckHead)
+            builder.HasOne(b => b.Vehicle)
                    .WithMany()
-                   .HasForeignKey(b => b.TruckID)
+                   .HasForeignKey(b => b.VehicleID)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(b => b.Driver)
                    .WithMany()
-                   .HasForeignKey(b => b.DriverID)
+                   .HasForeignKey(b => b.DriverUserID)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(b => b.Helper)
                    .WithMany()
-                   .HasForeignKey(b => b.HelperID)
+                   .HasForeignKey(b => b.HelperUserID)
                    .OnDelete(DeleteBehavior.SetNull);
 
             builder.HasMany(b => b.StatusHistory)

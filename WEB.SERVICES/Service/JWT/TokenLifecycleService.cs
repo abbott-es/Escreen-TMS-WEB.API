@@ -130,8 +130,8 @@ namespace WEB.SERVICES.Service.JWT
             {
                 return await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
                 {
-                    var tokens = await _tokenRepository.GetAllAsync(ct);
-                    return tokens.Any(t => t.AccessTokenJti == jti && t.IsRevoked);
+                    var tokens = await _tokenRepository.GetAllAsync(x => x.AccessTokenJti == jti && x.IsRevoked, ct);
+                    return tokens.Any();
                 }, ct);
             }
             catch (Exception ex)

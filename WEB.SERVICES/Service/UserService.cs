@@ -2,18 +2,22 @@
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using WEB.DAL;
+using WEB.DAL.Repository;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
+using static Dapper.SqlMapper;
 
 namespace WEB.SERVICES.Service
 {
     public sealed class UserService : BaseService<UserService>, IUserService
     {
         private readonly IRepository<User> _userRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IRepository<UserInfo> _userInfoRepository;
         private readonly IMapper _mapper;
         private readonly IUserContextService _userContextService;
@@ -23,13 +27,15 @@ namespace WEB.SERVICES.Service
             IMapper mapper,
             IAppLogger<UserService> logger,
             IRepository<User> userRepository,
-            IUserContextService userContextService
+            IUserContextService userContextService,
+            IUnitOfWork unitOfWork
         ) : base(logger)
         {
             _userInfoRepository = userInfoRepository;
             _mapper = mapper;
             _userRepository = userRepository;
             _userContextService = userContextService;
+            _unitOfWork = unitOfWork;
         }
 
         private async Task<User> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
@@ -67,6 +73,39 @@ namespace WEB.SERVICES.Service
                 return Prelude.Left(ApiResponse<string>.Fail(["Invalid Authenticated User"], HttpStatusCode.NotFound));
 
             return Prelude.Right(ApiResponse<string>.Ok(user.Role.RoleName, HttpStatusCode.OK, "User role successfully retrieved"));
+        }
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserDto>>>> GetAllUserByRoleAsync(UserRoleDto userRoleDto, CancellationToken ct = default)
+        {
+            try
+            {
+                var entities = await _userRepository.GetAllAsync(d => d.RoleID == userRoleDto.RoleID, ct, true, userRoleDto.Includes);
+                return Prelude.Right(ApiResponse<IEnumerable<UserDto>>.Ok(_mapper.Map<IEnumerable<UserDto>>(entities).ToList()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching all driver");
+                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+            }
+        }
+
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateUserAsync(UpdateUserDto dto, CancellationToken ct = default)
+        {
+            try
+            {
+                var entity = _mapper.Map<User>(dto);
+                await _unitOfWork.ExecuteAsync(async c =>
+                {
+                    _userRepository.Update(entity, u => u.UserInfo);
+                }, ct);
+                return Prelude.Right(ApiResponse<string>.Ok("Update Successfully"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user detail");
+                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+            }
         }
 
         //sample dapper use

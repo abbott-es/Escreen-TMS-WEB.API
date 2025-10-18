@@ -8,12 +8,19 @@ namespace WEB.SERVICES.MappingProfile
     {
         public void Process(UserDto source, User destination, ResolutionContext context)
         {
-            // Default to true if the flag is missing
-            var ignore = context.Items.TryGetValue("IgnoreAuth", out var value) ? (bool)value : true;
-
-            if (ignore)
+            try
             {
-                destination.Auth = null;
+                // Default to false if the flag is missing
+                var ignore = context.Items.TryGetValue("IgnoreAuth", out var value) ? (bool)value : false;
+
+                if (ignore)
+                {
+                    destination.Auth = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                return;
             }
         }
     }

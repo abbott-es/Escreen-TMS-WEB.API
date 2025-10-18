@@ -12,7 +12,8 @@ namespace WEB.DOMAIN.Config
 
             builder.HasOne(l => l.Client)
                    .WithMany(c => c.Locations)
-                   .HasForeignKey(l => l.ClientID);
+                   .HasForeignKey(l => l.ClientID)
+                   .IsRequired(false);
         }
     }
 }

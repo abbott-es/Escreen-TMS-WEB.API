@@ -53,7 +53,7 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var entities = await _repository.GetAllAsync(ct, true, includePaths
+                var entities = await _repository.GetAllAsync(null,ct, true, includePaths
                 );
                 return Prelude.Right(ApiResponse<IEnumerable<TDto>>.Ok(_mapper.Map<IEnumerable<TDto>>(entities).ToList()));
             }

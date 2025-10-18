@@ -11,6 +11,7 @@ namespace WEB.DOMAIN.Entity
         public string LastName { get; set; }
         public string Email { get; set; }
         public string ContactNumber { get; set; }
+        public string? LicenseNumber { get; set; }
 
         public User User { get; set; }
     }

@@ -8,6 +8,7 @@ namespace WEB.SERVICES.MappingProfile
     {
         public AuthProfile()
         {
+            CreateMap<Auth, AuthDto>();
             CreateMap<AuthDto, Auth>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom<PasswordEncryptionResolver>());
         }
