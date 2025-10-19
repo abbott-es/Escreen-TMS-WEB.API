@@ -7,8 +7,10 @@ namespace WEB.SERVICES.Validation
     {
         public VehicleDtoValidator()
         {
-            RuleFor(x => x.CompanyName)
-                .NotEmpty().WithMessage("Company name is required.");
+            RuleFor(x => x.Model)
+                .NotEmpty().WithMessage("Model is required.");
+            RuleFor(x => x.PlateNumber)
+                .NotEmpty().WithMessage("Plate Number is required.");
         }
     }
 }

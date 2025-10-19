@@ -8,7 +8,6 @@ namespace WEB.SERVICES.MappingProfile
     {
         public RoleProfile()
         {
-
             CreateMap<RoleDto, Role>()
             .ForMember(dest => dest.RoleID, opt => opt.Ignore())
             .ForMember(dest => dest.RoleID, opt => opt.MapFrom(_ => Guid.NewGuid()))

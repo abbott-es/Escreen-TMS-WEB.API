@@ -1,8 +1,10 @@
-﻿
-namespace WEB.SERVICES.DTO
+﻿namespace WEB.SERVICES.DTO
 {
     public class VehicleDto
     {
-        public string CompanyName { get; set; }
+        public Guid VehicleID { get; set; }
+        public string Model { get; set; }
+        public string PlateNumber { get; set; }
+        public ChassisDto Chassis { get; set; }
     }
 }

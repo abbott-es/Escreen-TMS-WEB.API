@@ -30,6 +30,7 @@ namespace WEB.SERVICES
                 cfg.AddProfile<UserProfile>();
                 cfg.AddProfile<RoleProfile>();
                 cfg.AddProfile<ClientProfile>();
+                cfg.AddProfile<VehicleProfile>();
             });
             services.AddTransient<IgnoreAuthInClientMapping>();
 
