@@ -1,0 +1,32 @@
+meta {
+  name: edit
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{BASE_URL}}/user-api/api/user
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "Auth": {
+      "Username": "user",
+      "Password": "pass"
+    },
+    "RoleID": "guid",
+    "UserInfo": {
+      "FirstName": "string",
+      "LastName": "string",
+      "Email": "string",
+      "ContactNumber": "string",
+      "LicenseNumber": "string"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

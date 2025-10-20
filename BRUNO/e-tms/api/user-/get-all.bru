@@ -1,0 +1,20 @@
+meta {
+  name: get-all
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/user-api/api/user?RoleId=guid
+  body: none
+  auth: inherit
+}
+
+params:query {
+  RoleId: guid
+  ~Includes: UserInfo
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,17 +1,17 @@
 meta {
-  name: post
+  name: get-one
   type: http
   seq: 3
 }
 
 get {
-  url: {{BASE_URL}}/role-api/api/role
+  url: {{BASE_URL}}/user-api/api/user/{{id}}
   body: none
   auth: inherit
 }
 
-params:query {
-  ~Includes: 
+vars:pre-request {
+  id: guid
 }
 
 settings {
