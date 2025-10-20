@@ -23,7 +23,7 @@ namespace WEB.SERVICES.MappingProfile
             CreateMap<User, UserDto>()
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.UserID))
                 .ForMember(dest => dest.RoleID, opt => opt.MapFrom(src => src.RoleID))
-                .ForMember(dest => dest.Auth, opt => opt.MapFrom(src => src.Auth))
+                .ForMember(dest => dest.Auth, opt => opt.Ignore())
                 .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
 
             CreateMap<UpdateUserDto, User>()
