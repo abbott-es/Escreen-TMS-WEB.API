@@ -2,15 +2,12 @@
 using LanguageExt;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
-using WEB.DAL;
-using WEB.DAL.Repository;
 using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
-using static Dapper.SqlMapper;
 
 namespace WEB.SERVICES.Service
 {
@@ -75,11 +72,11 @@ namespace WEB.SERVICES.Service
             return Prelude.Right(ApiResponse<string>.Ok(user.Role.RoleName, HttpStatusCode.OK, "User role successfully retrieved"));
         }
 
-        public async Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserDto>>>> GetAllUserByRoleAsync(UserRoleDto userRoleDto, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserDto>>>> GetAllUserByRoleAsync(GenericFromQueryDto userRoleDto, CancellationToken ct = default)
         {
             try
             {
-                var entities = await _userRepository.GetAllAsync(d => d.RoleID == userRoleDto.RoleID, ct, true, userRoleDto.Includes);
+                var entities = await _userRepository.GetAllAsync(d => d.RoleID == userRoleDto.ID, ct, true, userRoleDto.Includes);
                 return Prelude.Right(ApiResponse<IEnumerable<UserDto>>.Ok(_mapper.Map<IEnumerable<UserDto>>(entities).ToList()));
             }
             catch (Exception ex)

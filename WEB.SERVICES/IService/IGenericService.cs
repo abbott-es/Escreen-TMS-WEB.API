@@ -1,11 +1,12 @@
 ﻿using LanguageExt;
+using WEB.SERVICES.DTO;
 using WEB.UTILITY.Helper;
 
 namespace WEB.SERVICES.IService
 {
     public interface IGenericService<TDto> where TDto : class
     {
-        Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(GenericFromQueryDto genericQuery, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<TDto>>>> GetAllAsync(CancellationToken ct = default,
             params string[] includePaths);
         Task<Either<ApiResponse<string>, ApiResponse<Guid>>> AddAsync(TDto dto, CancellationToken ct = default);

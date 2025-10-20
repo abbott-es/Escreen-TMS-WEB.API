@@ -3,6 +3,7 @@ using FluentValidation;
 using LanguageExt;
 using System.Net;
 using WEB.DOMAIN.Interface;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
@@ -33,13 +34,13 @@ namespace WEB.SERVICES.Service
             _logger = logger;
         }
 
-        public virtual async Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(GenericFromQueryDto genericQuery, CancellationToken ct = default)
         {
             try
             {
-                var entity = await _repository.GetByIdAsync(id, ct);
+                var entity = await _repository.GetByIdAsync(genericQuery.ID, ct, genericQuery.Includes);
                 return entity == null
-                    ? Prelude.Left(ApiResponse<string>.Fail([$"{typeof(TDto).Name.Substring(0, typeof(TDto).Name.Length - 3)} not found: {id}"], HttpStatusCode.NotFound))
+                    ? Prelude.Left(ApiResponse<string>.Fail([$"{typeof(TDto).Name.Substring(0, typeof(TDto).Name.Length - 3)} not found: {genericQuery.ID}"], HttpStatusCode.NotFound))
                     : Prelude.Right(ApiResponse<TDto>.Ok(_mapper.Map<TDto>(entity)));
             }
             catch (Exception ex)

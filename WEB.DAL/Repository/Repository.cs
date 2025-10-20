@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using WEB.DOMAIN.Entity;
@@ -30,7 +31,7 @@ namespace WEB.DAL.Repository
             {
                 query = query.Where(predicate);
             }
-            if(includePaths != null)
+            if (includePaths != null)
             {
                 foreach (var include in includePaths)
                     query = query.Include(include);
@@ -40,10 +41,18 @@ namespace WEB.DAL.Repository
         }
 
 
-        public async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        public async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default, params string[] includePaths)
         {
-            // If your key is always Guid Id, this is fine. Otherwise, prefer the FindAsync(params object?[])
-            return await _dbSet.FindAsync(new object?[] { id }, ct);
+            IQueryable<T> query = _dbSet.AsNoTracking();
+            if (includePaths?.Length > 0)
+            {
+                foreach (var include in includePaths)
+                {
+                    query = query.Include(include);
+                }
+            }
+            var keyName = EntityKeyResolver.GetMappedKeyPropertyName<T>();
+            return await query.Where(e => EF.Property<Guid>(e, keyName) != Guid.Empty && EF.Property<Guid>(e, keyName) == id).FirstOrDefaultAsync(ct);
         }
 
         public async Task<T?> GetByKeysAsync(CancellationToken ct = default, params object?[] keyValues)
@@ -55,7 +64,7 @@ namespace WEB.DAL.Repository
         public Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
             => _dbSet.AddRangeAsync(entities, ct);
 
-        public void Update(T entity, params Expression<Func<T, object>>[] modifiedNavigations)
+        public void Update(T entity, params Expression<Func<T, object>>[] modifiedNavigations)//which include to modify
         {
             _dbSet.Attach(entity);
             _context.Entry(entity).State = EntityState.Modified;

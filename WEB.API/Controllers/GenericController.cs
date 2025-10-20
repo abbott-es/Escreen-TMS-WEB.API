@@ -20,12 +20,13 @@ namespace WEB.API.Controllers
         /// Retrieves a single entity by its unique identifier.
         /// </summary>
         /// <param name="id">The GUID of the entity to retrieve.</param>
+        /// <param name="includes">an array of navigation property paths to include.</param>
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response containing the entity or a not found result.</returns>
         [HttpGet("{id}")]
-        public virtual async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
+        public virtual async Task<IActionResult> GetById(Guid id, [FromQuery] string[] includes, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_genericService.GetByIdAsync(id, ct));
+            return await ResultMatcher.MatchResultAsync(_genericService.GetByIdAsync(new GenericFromQueryDto() { ID = id, Includes = includes }, ct));
         }
 
         /// <summary>

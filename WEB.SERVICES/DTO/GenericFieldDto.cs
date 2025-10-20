@@ -10,4 +10,9 @@ namespace WEB.SERVICES.DTO
     {
         public List<Guid> ID { get; set; }
     }
+
+    public class GenericFromQueryDto : GenericFieldDto
+    {
+        public string[]? Includes { get; set; }
+    }
 }

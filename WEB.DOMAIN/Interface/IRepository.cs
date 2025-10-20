@@ -12,7 +12,7 @@ namespace WEB.DOMAIN.Interface
         Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths);
 
         // If your entities always use Guid Id:
-        Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default, params string[] includePaths);
         Task<T?> GetByKeysAsync(CancellationToken ct = default, params object?[] keyValues);
         Task AddAsync(T entity, CancellationToken ct = default);
         Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default);
