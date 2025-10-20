@@ -20,7 +20,7 @@ namespace WEB.API.Controllers
         [NonAction]
         public override async Task<IActionResult> GetAll([FromQuery] string[] includes, CancellationToken ct = default)
         {
-            return await base.GetAll(null,ct);
+            return await base.GetAll(null, ct);
         }
 
         [NonAction]
@@ -28,16 +28,23 @@ namespace WEB.API.Controllers
         {
             return await base.Update(null, ct);
         }
+
+        [NonAction]
+        public override async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
+        {
+            return await base.GetById(Guid.Empty, ct);
+        }
+
         /// <summary>
         /// Retrieves all users per role, optionally including related navigation properties.
         /// </summary>
-        /// <param name="userRoleDto">An object thhat consist of roleid and array of navigation property paths to include.</param>
+        /// <param name="userRoleDto">An object that consist of roleid and array of navigation property paths to include.</param>
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response containing the list of users or a not found result.</returns>
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] UserRoleDto userRoleDto, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_userService.GetAllUserByRoleAsync(userRoleDto,ct));
+            return await ResultMatcher.MatchResultAsync(_userService.GetAllUserByRoleAsync(userRoleDto, ct));
         }
 
         /// <summary>
@@ -65,8 +72,8 @@ namespace WEB.API.Controllers
         /// 200 OK with user details.
         /// 404 Not Found if no user is found.
         /// </returns>
-        [HttpGet("GetUserByID/{userID}")]
-        public async Task<IActionResult> GetUserByIdAsync(Guid userID, CancellationToken ct = default)
+        [HttpGet("{userID}")]
+        public async Task<IActionResult> Get(Guid userID, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_userService.GetUserDtoByIdAsync(userID, ct));
         }

@@ -39,7 +39,7 @@ namespace WEB.SERVICES.Service
             {
                 var entity = await _repository.GetByIdAsync(id, ct);
                 return entity == null
-                    ? Prelude.Left(ApiResponse<string>.Fail(["Entity not found"], HttpStatusCode.NotFound))
+                    ? Prelude.Left(ApiResponse<string>.Fail([$"{typeof(TDto).Name.Substring(0, typeof(TDto).Name.Length - 3)} not found: {id}"], HttpStatusCode.NotFound))
                     : Prelude.Right(ApiResponse<TDto>.Ok(_mapper.Map<TDto>(entity)));
             }
             catch (Exception ex)
@@ -53,7 +53,7 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var entities = await _repository.GetAllAsync(null,ct, true, includePaths
+                var entities = await _repository.GetAllAsync(null, ct, true, includePaths
                 );
                 return Prelude.Right(ApiResponse<IEnumerable<TDto>>.Ok(_mapper.Map<IEnumerable<TDto>>(entities).ToList()));
             }
