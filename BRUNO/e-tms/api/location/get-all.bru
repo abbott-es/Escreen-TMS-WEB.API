@@ -1,11 +1,11 @@
 meta {
-  name: get-one
+  name: get-all
   type: http
   seq: 2
 }
 
 get {
-  url: {{BASE_URL}}/role-api/api/role/{{id}}
+  url: {{BASE_URL}}/location-api/api/location
   body: none
   auth: inherit
 }
@@ -15,8 +15,7 @@ params:query {
 }
 
 vars:pre-request {
-  id: guid
-  Includes: 
+  Includes: DataToInclude
 }
 
 settings {

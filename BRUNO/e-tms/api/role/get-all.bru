@@ -11,7 +11,11 @@ get {
 }
 
 params:query {
-  ~Includes: 
+  ~Includes: {{Includes}}
+}
+
+vars:pre-request {
+  Includes: DataToInclude
 }
 
 settings {

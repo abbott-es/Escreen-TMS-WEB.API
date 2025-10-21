@@ -5,13 +5,13 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/client-api/api/client?Includes
+  url: {{BASE_URL}}/client-api/api/client?Includes={{Includes}}
   body: json
   auth: inherit
 }
 
 params:query {
-  Includes: 
+  Includes: {{Includes}}
 }
 
 body:json {
@@ -42,10 +42,14 @@ body:json {
   }
 }
 
+vars:pre-request {
+  Includes: PropertyToUpdate
+}
+
 settings {
   encodeUrl: true
 }
 
 docs {
-  Edit client data with their new client info
+  Edit client data with their new client info with includes pass required parameter to update
 }

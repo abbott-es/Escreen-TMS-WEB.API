@@ -1,17 +1,24 @@
 meta {
-  name: post
+  name: edit
   type: http
   seq: 3
 }
 
-post {
+put {
   url: {{BASE_URL}}/role-api/api/role
-  body: none
+  body: json
   auth: inherit
 }
 
 params:query {
   ~Includes: 
+}
+
+body:json {
+  {
+    "roleId": "guid",
+    "roleName": "string"
+  }
 }
 
 settings {
