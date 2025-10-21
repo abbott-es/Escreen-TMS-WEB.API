@@ -1,20 +1,23 @@
 meta {
   name: get-all
   type: http
-  seq: 4
+  seq: 2
 }
 
 get {
-  url: {{BASE_URL}}/user-api/api/user?RoleId=guid
+  url: {{BASE_URL}}/client-api/api/client
   body: none
   auth: inherit
 }
 
 params:query {
-  RoleId: guid
-  ~Includes: UserInfo
+  ~Includes: Locations
 }
 
 settings {
   encodeUrl: true
+}
+
+docs {
+  Get all client optional includes data
 }
