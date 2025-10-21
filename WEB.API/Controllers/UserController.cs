@@ -17,12 +17,6 @@ namespace WEB.API.Controllers
             _userService = userService;
         }
 
-        [NonAction]
-        public override async Task<IActionResult> Update([FromBody] UserDto entity, CancellationToken ct = default)
-        {
-            return await base.Update(null, ct);
-        }
-
         /// <summary>
         /// Retrieves all users per role, optionally including related navigation properties.
         /// </summary>
@@ -33,18 +27,6 @@ namespace WEB.API.Controllers
         public async Task<IActionResult> GetAll([FromQuery] GenericFromQueryDto userRoleDto, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_userService.GetAllUserByRoleAsync(userRoleDto, ct));
-        }
-
-        /// <summary>
-        /// Updates an existing user details.
-        /// </summary>
-        /// <param name="entity">The user detail with updated data.</param>
-        /// <param name="ct">Optional cancellation token.</param>
-        /// <returns>An API response indicating success or failure.</returns>
-        [HttpPut]
-        public async Task<IActionResult> Update([FromBody] UpdateUserDto entity, CancellationToken ct = default)
-        {
-            return await ResultMatcher.MatchResultAsync(_userService.UpdateUserAsync(entity, ct));
         }
 
         /// <summary>

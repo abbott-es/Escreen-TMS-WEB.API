@@ -86,38 +86,6 @@ namespace WEB.SERVICES.Service
             }
         }
 
-
-        public async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateUserAsync(UpdateUserDto dto, CancellationToken ct = default)
-        {
-            try
-            {
-                var existingUser = await _userRepository
-                    .Query(asNoTracking: true)
-                    .Where(a => a.UserID == dto.UserID && a.IsActive)
-                    .Include(a => a.UserInfo)
-                    .Include(x => x.Role).FirstOrDefaultAsync(ct);
-                if (existingUser == null)
-                {
-                    return Prelude.Left(ApiResponse<string>.Fail(["User not found"], HttpStatusCode.NotFound));
-                }
-
-                // Map updated fields onto the tracked entity
-                _mapper.Map(dto, existingUser);
-
-                await _unitOfWork.ExecuteAsync(async c =>
-                {
-                    _userRepository.Update(existingUser, u => u.UserInfo);
-                }, ct);
-
-                return Prelude.Right(ApiResponse<string>.Ok("Update Successfully"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating user detail");
-                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
-            }
-        }
-
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)
         //{

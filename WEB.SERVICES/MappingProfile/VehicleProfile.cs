@@ -14,9 +14,11 @@ namespace WEB.SERVICES.MappingProfile
             CreateMap<Chassis, ChassisDto>();
 
             CreateMap<VehicleDto, Vehicle>()
+                .ForMember(dest => dest.VehicleID, opt => opt.MapFrom(src => Guid.Empty == src.VehicleID ? Guid.Empty : src.VehicleID))
                 .ForMember(dest => dest.Chassis, opt => opt.MapFrom(src => src.Chassis));
 
-            CreateMap<ChassisDto, Chassis>();
+            CreateMap<ChassisDto, Chassis>()
+                .ForMember(dest => dest.ChassisID, opt => opt.MapFrom(src => Guid.Empty == src.ChassisID ? Guid.Empty : src.ChassisID));
         }
     }
 }

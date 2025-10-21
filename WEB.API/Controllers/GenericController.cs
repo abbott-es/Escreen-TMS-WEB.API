@@ -7,11 +7,11 @@ namespace WEB.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class GenericController<T> : ControllerBase where T : class
+    public class GenericController<TDto> : ControllerBase where TDto : class
     {
-        private readonly IGenericService<T> _genericService;
+        private readonly IGenericService<TDto> _genericService;
 
-        public GenericController(IGenericService<T> genericService)
+        public GenericController(IGenericService<TDto> genericService)
         {
             _genericService = genericService;
         }
@@ -48,7 +48,7 @@ namespace WEB.API.Controllers
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPost]
-        public virtual async Task<IActionResult> Create([FromBody] T entity, CancellationToken ct = default)
+        public virtual async Task<IActionResult> Create([FromBody] TDto entity, CancellationToken ct = default)
         {
             return await ResultMatcher.MatchResultAsync(_genericService.AddAsync(entity, ct));
         }
@@ -56,13 +56,14 @@ namespace WEB.API.Controllers
         /// <summary>
         /// Updates an existing entity.
         /// </summary>
+        /// <param name="id">Entity id</param>
         /// <param name="entity">The entity with updated data.</param>
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPut]
-        public virtual async Task<IActionResult> Update([FromBody] T entity, CancellationToken ct = default)
+        public virtual async Task<IActionResult> Update([FromQuery] Guid id, [FromQuery] string[] includes, [FromBody] TDto entity, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_genericService.UpdateAsync(entity, ct));
+            return await ResultMatcher.MatchResultAsync(_genericService.UpdateAsync(id, entity, ct, includes));
         }
 
         /// <summary>

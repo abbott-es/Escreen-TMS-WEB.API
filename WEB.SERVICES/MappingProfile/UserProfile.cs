@@ -18,15 +18,13 @@ namespace WEB.SERVICES.MappingProfile
                 .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo))
                 .AfterMap<IgnoreAuthInClientMapping>();
 
-            CreateMap<UserInfoDto, UserInfo>();
+            CreateMap<UserInfoDto, UserInfo>()
+                .ForMember(dest => dest.UserInfoID, opt => opt.MapFrom(src => Guid.Empty == src.UserInfoID ? Guid.Empty : src.UserInfoID));
             CreateMap<UserInfo, UserInfoDto>();
             CreateMap<User, UserDto>()
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.UserID))
                 .ForMember(dest => dest.RoleID, opt => opt.MapFrom(src => src.RoleID))
                 .ForMember(dest => dest.Auth, opt => opt.Ignore())
-                .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
-
-            CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
         }
     }

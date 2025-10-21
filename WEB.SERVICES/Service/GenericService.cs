@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DocumentFormat.OpenXml.Office2010.Excel;
 using FluentValidation;
 using LanguageExt;
 using System.Net;
@@ -92,14 +93,22 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(TDto dto, CancellationToken ct = default)
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(Guid id, TDto dto, CancellationToken ct = default, params string[] includePaths)
         {
             try
             {
-                var entity = _mapper.Map<TEntity>(dto);
+                var existingEntity = await _repository.GetByIdAsync(id, ct, includePaths);
+                if (existingEntity == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail([$"This entity id is not found: {id}"], HttpStatusCode.NotFound));
+                }
+
+                _mapper.Map(dto, existingEntity);
+
+                var lambda = LambdaBuilder.BuildNavigationExpressions<TEntity>(includePaths);
                 await _unitOfWork.ExecuteAsync(async c =>
                 {
-                    _repository.Update(entity);
+                    _repository.Update(existingEntity, lambda);
                 }, ct);
                 return Prelude.Right(ApiResponse<string>.Ok("Update Successfully"));
             }

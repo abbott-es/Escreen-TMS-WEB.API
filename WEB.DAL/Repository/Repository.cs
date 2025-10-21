@@ -1,9 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using System;
+using System.Collections;
 using System.Linq.Expressions;
 using System.Reflection;
-using WEB.DOMAIN.Entity;
 using WEB.DOMAIN.Interface;
 using WEB.DOMAIN.Resolver;
 
@@ -79,9 +77,47 @@ namespace WEB.DAL.Repository
                 if (propertyInfo == null) continue;
 
                 var value = propertyInfo.GetValue(entity);
+
                 if (value != null)
                 {
-                    _context.Entry(entity).Reference(nav).TargetEntry.State = EntityState.Modified;
+                    var propertyType = propertyInfo.PropertyType;
+
+                    if (typeof(IEnumerable).IsAssignableFrom(propertyType) && propertyType != typeof(string))
+                    {
+                        // It's a collection navigation
+                        var collection = value as IEnumerable;
+                        if (collection != null)
+                        {
+                            foreach (var item in collection)
+                            {
+                                var itemType = item.GetType();
+                                var idProperty = itemType.GetProperty("Id"); // Assumes the ID is named "Id"
+
+                                if (idProperty != null)
+                                {
+                                    var idValue = idProperty.GetValue(item);
+
+                                    if (idValue == null || (idValue is Guid guid && guid == Guid.Empty))
+                                    {
+                                        _context.Entry(item).State = EntityState.Added;
+                                    }
+                                    else
+                                    {
+                                        _context.Entry(item).State = EntityState.Modified;
+                                    }
+                                }
+                                else
+                                {
+                                    _context.Entry(item).State = EntityState.Modified;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // It's a reference navigation
+                        _context.Entry(entity).Reference(nav).TargetEntry.State = EntityState.Modified;
+                    }
                 }
             }
         }
