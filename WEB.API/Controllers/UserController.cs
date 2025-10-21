@@ -46,5 +46,27 @@ namespace WEB.API.Controllers
         {
             return await ResultMatcher.MatchResultAsync(_userService.GetActiveUserRoleAsync(ct));
         }
+
+        /// <summary>
+        /// Retrieves all users driver.
+        /// </summary>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response containing the list of users driver or a not found result.</returns>
+        [HttpGet("GetAllDriver")]
+        public async Task<IActionResult> GetAllDriver(CancellationToken ct = default)
+        {
+            return await ResultMatcher.MatchResultAsync(_userService.GetAllDriver(ct));
+        }
+
+        /// <summary>
+        /// Retrieves all users helper.
+        /// </summary>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response containing the list of users helper or a not found result.</returns>
+        [HttpGet("GetAllHelper")]
+        public async Task<IActionResult> GetAllHelper(CancellationToken ct = default)
+        {
+            return await ResultMatcher.MatchResultAsync(_userService.GetAllHelper(ct));
+        }
     }
 }

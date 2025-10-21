@@ -86,6 +86,33 @@ namespace WEB.SERVICES.Service
             }
         }
 
+        public async Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserInfoDto>>>> GetAllDriver(CancellationToken ct = default)
+        {
+            try
+            {
+                var entities = await _userRepository.GetAllAsync(d => d.RoleID == Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"), ct, true, ["UserInfo"]);
+                return Prelude.Right(ApiResponse<IEnumerable<UserInfoDto>>.Ok(_mapper.Map<IEnumerable<UserInfoDto>>(entities.Select(x => x.UserInfo)).ToList()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching all driver");
+                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+            }
+        }
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserInfoDto>>>> GetAllHelper(CancellationToken ct = default)
+        {
+            try
+            {
+                var entities = await _userRepository.GetAllAsync(d => d.RoleID == Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), ct, true, ["UserInfo"]);
+                return Prelude.Right(ApiResponse<IEnumerable<UserInfoDto>>.Ok(_mapper.Map<IEnumerable<UserInfoDto>>(entities.Select(x => x.UserInfo)).ToList()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching all helper");
+                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+            }
+        }
         //sample dapper use
         //public Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)
         //{

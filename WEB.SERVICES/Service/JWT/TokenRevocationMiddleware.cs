@@ -19,7 +19,7 @@ namespace WEB.SERVICES.Service.JWT
         {
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
-            if (!string.IsNullOrEmpty(token))
+            if (!string.IsNullOrEmpty(token) && !token.Equals("Bearer", StringComparison.OrdinalIgnoreCase))
             {
                 await using var scope = _serviceProvider.CreateAsyncScope();
                 var tokenLifecycleService = scope.ServiceProvider.GetRequiredService<ITokenLifecycleService>();
