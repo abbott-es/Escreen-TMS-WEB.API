@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
 using System.Text;
 using WEB.SERVICES;
-using WEB.SERVICES.Service.JWT;
+using WEB.SERVICES.Service.Authentication.JWT;
 using WEB.UTILITY.Convention;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
