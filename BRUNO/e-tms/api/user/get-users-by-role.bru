@@ -5,19 +5,19 @@ meta {
 }
 
 get {
-  url: {{BASE_URL}}/user-api/api/user?RoleId={{RoleId}}&Includes={{Includes}}
+  url: {{BASE_URL}}/user-api/api/user/role?Includes={{Includes}}&ID={{id}}
   body: none
   auth: inherit
 }
 
 params:query {
-  RoleId: {{RoleId}}
   Includes: {{Includes}}
+  ID: {{id}}
 }
 
 vars:pre-request {
-  RoleId: guid
   Includes: UserInfo
+  id: DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD
 }
 
 settings {
@@ -25,5 +25,5 @@ settings {
 }
 
 docs {
-  Get users having role id
+  Get Users by Role required role Id optional Includes
 }

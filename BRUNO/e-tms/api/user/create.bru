@@ -1,7 +1,7 @@
 meta {
   name: create
   type: http
-  seq: 5
+  seq: 7
 }
 
 post {
@@ -13,17 +13,15 @@ post {
 body:json {
   {
     "Auth": {
-      "Username": "user",
-      "Password": "pass"
+      "Username": "string",
+      "Password": "string"
     },
     "RoleID": "guid",
     "UserInfo": {
       "FirstName": "string",
-      "LastName": "string",
+      "MiddleName": "string",
+      "Lastname": "string",
       "Email": "string",
-      "FirstName": "Jose Miguel",
-      "LastName": "Sevilla",
-      "Email": "jose@abbott.com",
       "ContactNumber": "0",
       "LicenseNumber": "0"
     }
