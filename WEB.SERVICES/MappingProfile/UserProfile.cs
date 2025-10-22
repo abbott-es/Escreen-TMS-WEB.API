@@ -19,18 +19,19 @@ namespace WEB.SERVICES.MappingProfile
                 .AfterMap<IgnoreAuthInClientMapping>();
 
             CreateMap<UserInfoDto, UserInfo>()
-                .ForMember(dest => dest.UserInfoID, opt => opt.MapFrom(src => Guid.Empty == src.UserInfoID ? Guid.Empty : src.UserInfoID))
-                .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => SplitName(src.FullName, "first")))
-                .ForMember(dest => dest.MiddleName, opt => opt.MapFrom(src => SplitName(src.FullName, "mid")))
-                .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => SplitName(src.FullName, "last")));
+                .ForMember(dest => dest.UserInfoID,
+                    opt => opt.MapFrom(src => Guid.Empty == src.UserInfoID ? Guid.Empty : src.UserInfoID));
 
-            CreateMap<UserInfo, UserInfoDto>()
-                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.MiddleName) ? $"{src.FirstName} {src.MiddleName} {src.LastName}".Trim() : $"{src.FirstName} {src.LastName}".Trim()));
+            CreateMap<UserInfo, UserInfoDto>();
+
             CreateMap<User, UserDto>()
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.UserID))
                 .ForMember(dest => dest.RoleID, opt => opt.MapFrom(src => src.RoleID))
                 .ForMember(dest => dest.Auth, opt => opt.Ignore())
                 .ForMember(dest => dest.UserInfo, opt => opt.MapFrom(src => src.UserInfo));
+
+            CreateMap<UserInfo, DriverHelperDto>()
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.MiddleName) ? $"{src.FirstName} {src.MiddleName} {src.LastName}".Trim() : $"{src.FirstName} {src.LastName}".Trim()));
         }
 
         private string SplitName(string fullName, string type)
