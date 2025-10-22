@@ -20,7 +20,9 @@ namespace WEB.SERVICES.MappingProfile.Generic
 
             CreateMap<UserInfoDto, UserInfo>()
                 .ForMember(dest => dest.UserInfoID,
-                    opt => opt.MapFrom(src => Guid.Empty == src.UserInfoID ? Guid.Empty : src.UserInfoID));
+                    opt => opt.MapFrom(src => Guid.Empty == src.UserInfoID ? Guid.Empty : src.UserInfoID))
+                .ForMember(dest => dest.MiddleName,
+                    opt => opt.MapFrom(src => string.IsNullOrEmpty(src.MiddleName) ? string.Empty : src.MiddleName));
 
             CreateMap<UserInfo, UserInfoDto>();
 
