@@ -1,0 +1,29 @@
+meta {
+  name: get-users-by-role
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/user-api/api/user?RoleId={{RoleId}}&Includes={{Includes}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  RoleId: {{RoleId}}
+  Includes: {{Includes}}
+}
+
+vars:pre-request {
+  RoleId: guid
+  Includes: UserInfo
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get users having role id
+}

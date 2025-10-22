@@ -1,0 +1,25 @@
+meta {
+  name: edit
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{BASE_URL}}/location-api/api/location
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "locationID": "guid",
+    "name": "string",
+    "address": "string",
+    "type": "string",
+    "clientID": "guid"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

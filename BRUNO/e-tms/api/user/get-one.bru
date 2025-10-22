@@ -1,11 +1,11 @@
 meta {
   name: get-one
   type: http
-  seq: 2
+  seq: 5
 }
 
 get {
-  url: {{BASE_URL}}/role-api/api/role/{{id}}
+  url: {{BASE_URL}}/user-api/api/user/{{id}}
   body: none
   auth: inherit
 }
@@ -16,4 +16,8 @@ vars:pre-request {
 
 settings {
   encodeUrl: true
+}
+
+docs {
+  get one user
 }

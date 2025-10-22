@@ -1,0 +1,28 @@
+meta {
+  name: delete
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{BASE_URL}}/client-api/api/client
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": [
+      "guid1",
+      "guid2"
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Delete client using their id
+}
