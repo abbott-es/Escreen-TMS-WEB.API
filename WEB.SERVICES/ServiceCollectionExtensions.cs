@@ -6,15 +6,18 @@ using Microsoft.Extensions.DependencyInjection;
 using WEB.DAL;
 using WEB.DAL.AppDbContext;
 using WEB.DAL.Repository;
-using WEB.DOMAIN.Entity;
+using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
-using WEB.SERVICES.DTO;
-using WEB.SERVICES.IService;
-using WEB.SERVICES.MappingProfile;
-using WEB.SERVICES.Service;
-using WEB.SERVICES.Service.ControlTower;
-using WEB.SERVICES.Service.JWT;
-using WEB.SERVICES.Validation;
+using WEB.SERVICES.DTO.Generic;
+using WEB.SERVICES.IService.IAuthentication;
+using WEB.SERVICES.IService.IGeneric;
+using WEB.SERVICES.MappingProfile.Authentication;
+using WEB.SERVICES.MappingProfile.Generic;
+using WEB.SERVICES.Service.Authentication;
+using WEB.SERVICES.Service.Authentication.JWT;
+using WEB.SERVICES.Service.Generic;
+using WEB.SERVICES.Validation.Authentication;
+using WEB.SERVICES.Validation.Generic;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
 using WEB.UTILITY.Security.ISecurity;
@@ -31,6 +34,8 @@ namespace WEB.SERVICES
                 cfg.AddProfile<UserProfile>();
                 cfg.AddProfile<RoleProfile>();
                 cfg.AddProfile<ClientProfile>();
+                cfg.AddProfile<VehicleProfile>();
+                cfg.AddProfile<LocationProfile>();
             });
             services.AddTransient<IgnoreAuthInClientMapping>();
 
@@ -71,6 +76,9 @@ namespace WEB.SERVICES
         {
             services.AddScoped(typeof(IGenericService<RoleDto>), typeof(GenericService<Role, RoleDto>));
             services.AddScoped(typeof(IGenericService<ClientDto>), typeof(GenericService<Client, ClientDto>));
+            services.AddScoped(typeof(IGenericService<UserDto>), typeof(GenericService<User, UserDto>));
+            services.AddScoped(typeof(IGenericService<LocationDto>), typeof(GenericService<Location, LocationDto>));
+            services.AddScoped(typeof(IGenericService<VehicleDto>), typeof(GenericService<Vehicle, VehicleDto>));
             return services;
         }
 
@@ -90,6 +98,12 @@ namespace WEB.SERVICES
             services.AddScoped<IValidator<RoleDto>, RoleDtoValidator>();
             services.AddValidatorsFromAssemblyContaining<ClientDtoValidator>();
             services.AddScoped<IValidator<ClientDto>, ClientDtoValidator>();
+            services.AddValidatorsFromAssemblyContaining<UserDtoValidator>();
+            services.AddScoped<IValidator<UserDto>, UserDtoValidator>();
+            services.AddValidatorsFromAssemblyContaining<LocationDtoValidator>();
+            services.AddScoped<IValidator<LocationDto>, LocationDtoValidator>();
+            services.AddValidatorsFromAssemblyContaining<VehicleDtoValidator>();
+            services.AddScoped<IValidator<VehicleDto>, VehicleDtoValidator>();
 
             return services;
         }

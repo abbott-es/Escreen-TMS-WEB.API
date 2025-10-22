@@ -1,0 +1,55 @@
+meta {
+  name: edit
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{BASE_URL}}/client-api/api/client?Includes={{Includes}}
+  body: json
+  auth: inherit
+}
+
+params:query {
+  Includes: {{Includes}}
+}
+
+body:json {
+  {
+    "clientId": "BBF494AD-7F44-45F1-B859-E96764151F66",
+    "companyName": "brother",
+    "user": {
+      "roleID": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+      "userInfo": {
+        "firstName": "string",
+        "lastName": "string",
+        "email": "string",
+        "contactNumber": "string",
+        "licenseNumber": "string"
+      },
+      "auth": {
+        "username": "string",
+        "password": "string"
+      }
+    },
+    "locations": [
+      {
+        "name": "string",
+        "address": "string",
+        "type": "string"
+      }
+    ]
+  }
+}
+
+vars:pre-request {
+  Includes: PropertyToUpdate
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Edit client data with their new client info with includes pass required parameter to update
+}

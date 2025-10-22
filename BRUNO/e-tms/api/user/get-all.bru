@@ -1,0 +1,27 @@
+meta {
+  name: get-all
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{BASE_URL}}/user-api/api/user?Includes={{Includes}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  Includes: {{Includes}}
+}
+
+vars:pre-request {
+  Includes: UserInfo
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get All Users optional include
+}

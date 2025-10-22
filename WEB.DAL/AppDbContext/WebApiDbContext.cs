@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Reflection;
-using WEB.DOMAIN.Config;
+using WEB.DOMAIN.Config.Generic;
 using WEB.DOMAIN.Entity;
+using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
 
 namespace WEB.DAL.AppDbContext
@@ -28,7 +29,7 @@ namespace WEB.DAL.AppDbContext
             }
             #endregion
             #region Auto Apply Configs
-            var configAssembly = typeof(HelperConfig).Assembly;
+            var configAssembly = typeof(UserConfig).Assembly;
 
             var applyConfigMethod = typeof(ModelBuilder)
                 .GetMethods()
@@ -74,6 +75,21 @@ namespace WEB.DAL.AppDbContext
                 {
                     RoleID = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                     RoleName = "Admin"
+                },
+                new Role
+                {
+                    RoleID = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                    RoleName = "Driver"
+                },
+                new Role
+                {
+                    RoleID = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                    RoleName = "Helper"
+                },
+                new Role
+                {
+                    RoleID = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                    RoleName = "Dispatcher"
                 }
             );
             #endregion

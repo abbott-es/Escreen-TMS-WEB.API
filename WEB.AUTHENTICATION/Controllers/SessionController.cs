@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WEB.SERVICES.DTO;
-using WEB.SERVICES.IService;
+using WEB.SERVICES.DTO.Generic;
+using WEB.SERVICES.IService.IAuthentication;
 using WEB.UTILITY.Helper;
 
 namespace WEB.AUTHENTICATION.Controllers

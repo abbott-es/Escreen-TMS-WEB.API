@@ -1,0 +1,19 @@
+meta {
+  name: get-current-user-role
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/user-api/api/user/role/current
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get current user role details
+}

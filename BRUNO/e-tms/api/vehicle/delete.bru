@@ -1,0 +1,28 @@
+meta {
+  name: delete
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{BASE_URL}}/vehicle-api/api/vehicle
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": [
+      "guid1",
+      "guid2"
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Delete vehicle using their id
+}

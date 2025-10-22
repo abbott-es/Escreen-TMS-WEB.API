@@ -1,0 +1,27 @@
+meta {
+  name: get-all
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/client-api/api/client
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~Includes: {{Includes}}
+}
+
+vars:pre-request {
+  Includes: DataToInclude
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get all client optional includes data
+}

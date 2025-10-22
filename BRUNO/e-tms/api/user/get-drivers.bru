@@ -1,0 +1,19 @@
+meta {
+  name: get-drivers
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/user-api/api/user/drivers
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get all drivers user role details
+}
