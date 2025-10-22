@@ -10,10 +10,7 @@ namespace WEB.DOMAIN.Entity
         public Role Role { get; set; }
 
         public Auth Auth { get; set; }
-        public Driver Driver { get; set; }
         public Client Client { get; set; }
-        public Helper Helper { get; set; }
-        public TruckVendor TruckVendor { get; set; }
         public UserInfo UserInfo { get; set; }
     }
 }

@@ -8,8 +8,8 @@ namespace WEB.DOMAIN.Entity
         public Guid ID => ChassisID;
         public string Type { get; set; }
         public string SerialNumber { get; set; }
-        public Guid TruckHeadID { get; set; }
-        public TruckHead TruckHead { get; set; }
+        public Guid VehicleID { get; set; }
+        public Vehicle Vehicle { get; set; }
     }
 
 }

@@ -10,10 +10,10 @@ namespace WEB.DOMAIN.Config
         {
             builder.HasKey(c => c.ChassisID);
 
-            builder.HasOne(c => c.TruckHead)
+            builder.HasOne(c => c.Vehicle)
                    .WithOne(th => th.Chassis)
-                   .HasPrincipalKey<TruckHead>(th => th.TruckHeadID)
-                   .HasForeignKey<Chassis>(c => c.TruckHeadID)      
+                   .HasPrincipalKey<Vehicle>(th => th.VehicleID)
+                   .HasForeignKey<Chassis>(c => c.VehicleID)      
                    .OnDelete(DeleteBehavior.Restrict);
         }
     }

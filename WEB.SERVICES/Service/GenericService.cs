@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
+using DocumentFormat.OpenXml.Office2010.Excel;
 using FluentValidation;
 using LanguageExt;
 using System.Net;
 using WEB.DOMAIN.Interface;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.IService;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
@@ -33,13 +35,13 @@ namespace WEB.SERVICES.Service
             _logger = logger;
         }
 
-        public virtual async Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(Guid id, CancellationToken ct = default)
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(GenericFromQueryDto genericQuery, CancellationToken ct = default)
         {
             try
             {
-                var entity = await _repository.GetByIdAsync(id, ct);
+                var entity = await _repository.GetByIdAsync(genericQuery.ID, ct, genericQuery.Includes);
                 return entity == null
-                    ? Prelude.Left(ApiResponse<string>.Fail(["Entity not found"], HttpStatusCode.NotFound))
+                    ? Prelude.Left(ApiResponse<string>.Fail([$"{typeof(TDto).Name.Substring(0, typeof(TDto).Name.Length - 3)} not found: {genericQuery.ID}"], HttpStatusCode.NotFound))
                     : Prelude.Right(ApiResponse<TDto>.Ok(_mapper.Map<TDto>(entity)));
             }
             catch (Exception ex)
@@ -53,7 +55,7 @@ namespace WEB.SERVICES.Service
         {
             try
             {
-                var entities = await _repository.GetAllAsync(ct, true, includePaths
+                var entities = await _repository.GetAllAsync(null, ct, true, includePaths
                 );
                 return Prelude.Right(ApiResponse<IEnumerable<TDto>>.Ok(_mapper.Map<IEnumerable<TDto>>(entities).ToList()));
             }
@@ -81,8 +83,8 @@ namespace WEB.SERVICES.Service
                     await _repository.AddAsync(entity, c);
                 }, ct);
 
-                var idProp = typeof(TEntity).GetProperty("Id");
-                return Prelude.Right(ApiResponse<Guid>.Ok(idProp != null ? (Guid)idProp.GetValue(entity)! : Guid.Empty));
+                var idProp = typeof(TEntity).GetProperty("ID");
+                return Prelude.Right(ApiResponse<Guid>.Ok(idProp != null ? (Guid)idProp.GetValue(entity)! : Guid.Empty, HttpStatusCode.OK, "Created Successfully"));
             }
             catch (Exception ex)
             {
@@ -91,14 +93,22 @@ namespace WEB.SERVICES.Service
             }
         }
 
-        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(TDto dto, CancellationToken ct = default)
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(Guid id, TDto dto, CancellationToken ct = default, params string[] includePaths)
         {
             try
             {
-                var entity = _mapper.Map<TEntity>(dto);
+                var existingEntity = await _repository.GetByIdAsync(id, ct, includePaths);
+                if (existingEntity == null)
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail([$"This entity id is not found: {id}"], HttpStatusCode.NotFound));
+                }
+
+                _mapper.Map(dto, existingEntity);
+
+                var lambda = LambdaBuilder.BuildNavigationExpressions<TEntity>(includePaths);
                 await _unitOfWork.ExecuteAsync(async c =>
                 {
-                    _repository.Update(entity);
+                    _repository.Update(existingEntity, lambda);
                 }, ct);
                 return Prelude.Right(ApiResponse<string>.Ok("Update Successfully"));
             }

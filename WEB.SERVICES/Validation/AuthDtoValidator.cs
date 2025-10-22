@@ -28,14 +28,12 @@ public class AuthDTOValidator : AbstractValidator<UserDto>
 
     private async Task<bool> BeUniqueUsername(string username, CancellationToken ct)
     {
-        var existing = (await _authRepository.GetAllAsync(ct))
-                       .Any(u => u.Username == username);
+        var existing = (await _authRepository.GetAllAsync(u => u.Username == username, ct)).Any();
         return !existing;
     }
     private async Task<bool> BeUniqueEmail(string email, CancellationToken ct)
     {
-        var existing = (await _userInfoRepository.GetAllAsync(ct))
-            .Any(u => u.Email == email);
+        var existing = (await _userInfoRepository.GetAllAsync(u => u.Email == email, ct)).Any();
         return !existing;
     }
 }

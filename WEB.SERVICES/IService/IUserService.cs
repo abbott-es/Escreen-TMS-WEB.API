@@ -8,5 +8,10 @@ namespace WEB.SERVICES.IService
     {
         Task<Either<ApiResponse<string>, ApiResponse<UserDto>>> GetUserDtoByIdAsync(Guid userID, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<string>>> GetActiveUserRoleAsync(CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserDto>>>> GetAllUserByRoleAsync(GenericFromQueryDto userRoleDto, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserInfoDto>>>> GetAllDriver(
+            CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<IEnumerable<UserInfoDto>>>> GetAllHelper(
+            CancellationToken ct = default);
     }
 }
