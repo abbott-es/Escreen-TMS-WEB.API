@@ -1,21 +1,21 @@
 meta {
   name: get-all
   type: http
-  seq: 2
+  seq: 3
 }
 
 get {
-  url: {{BASE_URL}}/client-api/api/client
+  url: {{BASE_URL}}/user-api/api/user?Includes={{Includes}}
   body: none
   auth: inherit
 }
 
 params:query {
-  ~Includes: {{Includes}}
+  Includes: {{Includes}}
 }
 
 vars:pre-request {
-  Includes: DataToInclude
+  Includes: UserInfo
 }
 
 settings {
@@ -23,5 +23,5 @@ settings {
 }
 
 docs {
-  Get all client optional includes data
+  Get All Users optional include
 }
