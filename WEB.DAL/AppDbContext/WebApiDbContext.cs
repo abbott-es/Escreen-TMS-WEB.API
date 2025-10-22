@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Reflection;
-using WEB.DOMAIN.Config;
+using WEB.DOMAIN.Config.Generic;
 using WEB.DOMAIN.Entity;
+using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
 
 namespace WEB.DAL.AppDbContext
