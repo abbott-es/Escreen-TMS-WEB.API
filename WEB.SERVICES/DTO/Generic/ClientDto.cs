@@ -1,8 +1,12 @@
-﻿namespace WEB.SERVICES.DTO.Generic
+﻿using System.Text.Json.Serialization;
+
+namespace WEB.SERVICES.DTO.Generic
 {
-    public class ClientDto
+    public class ClientDto : IBaseDto
     {
-        public string? ClientID { get; set; }
+        public Guid? ClientID { get; set; }
+        [JsonIgnore]
+        public Guid ID => ClientID.Value;
         public string CompanyName { get; set; }
 
         public UserDto? User { get; set; }
