@@ -5,30 +5,40 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/user-api/api/user
+  url: {{BASE_URL}}/user-api/api/user?id={{UserId}}
   body: json
   auth: inherit
 }
 
 params:query {
-  ~Includes: 
+  id: {{UserId}}
+  ~Includes: {{Includes}}
 }
 
 body:json {
   {
     "Auth": {
-      "Username": "user",
-      "Password": "pass"
+      "Username": "strin3",
+      "Password": "string4"
     },
-    "RoleID": "guid",
+    "RoleID": "{{RoleId}}",
     "UserInfo": {
-      "FirstName": "string",
+      "UserInfoId": "{{UserInfoId}}",
+      "FirstName": "Jose4",
+      "MiddleName": "",
       "LastName": "string",
-      "Email": "string",
+      "Email": "JoseSevil3la@abb.ott",
       "ContactNumber": "string",
       "LicenseNumber": "string"
     }
   }
+}
+
+vars:pre-request {
+  UserId: EF6D5BC0-50BF-4532-EF87-08DE126D1285
+  UserInfoId: 26B0D096-46AA-4562-DF87-08DE126D1294
+  RoleId: DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD
+  Includes: 
 }
 
 settings {

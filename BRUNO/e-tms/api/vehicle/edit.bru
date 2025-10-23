@@ -5,23 +5,24 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/vehicle-api/api/vehicle?Includes={{Includes}}
+  url: {{BASE_URL}}/vehicle-api/api/vehicle?Includes={{Includes}}&Id={{VehicleId}}
   body: json
   auth: inherit
 }
 
 params:query {
   Includes: {{Includes}}
+  Id: {{VehicleId}}
 }
 
 body:json {
   {
-    "vehicleID": "guid",
+    "vehicleID": "{{VehicleId}}",
     "model": "string",
     "plateNumber": "string",
     "chassis": {
-      "chassisID": "guid",
-      "vehicleID": "guid",
+      "chassisID": "{{ChassisId}}",
+      "vehicleID": "{{VehicleId}}",
       "type": "string",
       "serialNumber": "string"
     }
@@ -30,6 +31,8 @@ body:json {
 
 vars:pre-request {
   Includes: PropertyToUpdate
+  VehicleId: vehicle
+  ChassisId: chassis
 }
 
 settings {
