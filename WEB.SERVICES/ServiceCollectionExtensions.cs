@@ -8,15 +8,19 @@ using WEB.DAL.AppDbContext;
 using WEB.DAL.Repository;
 using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
+using WEB.SERVICES.DTO;
 using WEB.SERVICES.DTO.Generic;
+using WEB.SERVICES.IService;
 using WEB.SERVICES.IService.IAuthentication;
 using WEB.SERVICES.IService.IGeneric;
 using WEB.SERVICES.MappingProfile.Authentication;
 using WEB.SERVICES.MappingProfile.Generic;
 using WEB.SERVICES.Service.Authentication;
 using WEB.SERVICES.Service.Authentication.JWT;
+using WEB.SERVICES.Service.Control_Tower;
 using WEB.SERVICES.Service.Generic;
 using WEB.SERVICES.Validation.Authentication;
+using WEB.SERVICES.Validation.Control_Tower;
 using WEB.SERVICES.Validation.Generic;
 using WEB.UTILITY.Logger;
 using WEB.UTILITY.Security;
@@ -104,6 +108,11 @@ namespace WEB.SERVICES
             services.AddScoped<IValidator<LocationDto>, LocationDtoValidator>();
             services.AddValidatorsFromAssemblyContaining<VehicleDtoValidator>();
             services.AddScoped<IValidator<VehicleDto>, VehicleDtoValidator>();
+
+            #region Control Tower
+            services.AddValidatorsFromAssemblyContaining<BookingDtoValidator>();
+            services.AddScoped<IValidator<BookingDto>, BookingDtoValidator>();
+            #endregion
 
             return services;
         }

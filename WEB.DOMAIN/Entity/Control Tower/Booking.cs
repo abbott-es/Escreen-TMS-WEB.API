@@ -12,8 +12,8 @@ namespace WEB.DOMAIN.Entity
         public Guid VehicleID { get; set; }
         public Guid DriverUserID { get; set; }
         public Guid? HelperUserID { get; set; }
-        public DateTime ScheduledDate { get; set; }
-        public string Status { get; set; }
+        public DateTime? ScheduledDate { get; set; }
+        public int Status { get; set; }
         // Navigation properties
         public Client Client { get; set; }
         public Location Location { get; set; }
@@ -21,6 +21,8 @@ namespace WEB.DOMAIN.Entity
         public User Driver { get; set; }
         public User Helper { get; set; }
         public ICollection<BookingStatusHistory> StatusHistory { get; set; }
+        public Guid StartRouteID { get; set; }
+        public Guid EndRouteID { get; set; }
 
         public Coordinate StartRoute { get; set; }
         public Coordinate EndRoute { get; set; }

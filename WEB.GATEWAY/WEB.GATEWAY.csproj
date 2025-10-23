@@ -14,4 +14,8 @@
     <ProjectReference Include="..\WEB.UTILITY\WEB.UTILITY.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Logs\" />
+  </ItemGroup>
+
 </Project>

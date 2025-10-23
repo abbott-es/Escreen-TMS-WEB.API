@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using WEB.SERVICES;
-using WEB.SERVICES.Service.JWT;
+using WEB.SERVICES.Service.Authentication.JWT;
 using WEB.UTILITY.Convention;
 using WEB.UTILITY.middleware;
 using WEB.UTILITY.Security;
