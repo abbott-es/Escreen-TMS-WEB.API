@@ -5,21 +5,22 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/client-api/api/client?Includes={{Includes}}
+  url: {{BASE_URL}}/client-api/api/client?Includes={{Includes}}&Id={{ClientId}}
   body: json
   auth: inherit
 }
 
 params:query {
   Includes: {{Includes}}
+  Id: {{ClientId}}
 }
 
 body:json {
   {
-    "clientId": "BBF494AD-7F44-45F1-B859-E96764151F66",
+    "clientId": "{{ClientId}}",
     "companyName": "brother",
     "user": {
-      "roleID": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+      "roleID": "{{roleId}}",
       "userInfo": {
         "firstName": "string",
         "lastName": "string",
@@ -44,6 +45,8 @@ body:json {
 
 vars:pre-request {
   Includes: PropertyToUpdate
+  ClientId: clientId
+  roleId: roleId
 }
 
 settings {

@@ -13,19 +13,29 @@ post {
 body:json {
   {
     "Auth": {
-      "Username": "string",
-      "Password": "string"
+      "Username": "strin3",
+      "Password": "string4"
     },
-    "RoleID": "guid",
+    "RoleID": "{{RoleId}}",
     "UserInfo": {
-      "FirstName": "string",
-      "MiddleName": "string",
-      "Lastname": "string",
-      "Email": "string",
-      "ContactNumber": "0",
-      "LicenseNumber": "0"
+      "FirstName": "{{FirstName}}",
+      "MiddleName": "{{MiddleName}}",
+      "Lastname": "{{LastName}}",
+      "Email": "{{Email}}",
+      "ContactNumber": "{{ContactNumber}}",
+      "LicenseNumber": "{{LicenseNumber}}"
     }
   }
+}
+
+vars:pre-request {
+  RoleId: role id
+  FirstName: str
+  LastName: str
+  MiddleName: str
+  Email: str
+  ContactNumber: 0
+  LicenseNumber: 0
 }
 
 settings {

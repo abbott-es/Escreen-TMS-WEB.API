@@ -5,19 +5,27 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/location-api/api/location
+  url: {{BASE_URL}}/location-api/api/location?id={{LocationId}}
   body: json
   auth: inherit
 }
 
+params:query {
+  id: {{LocationId}}
+}
+
 body:json {
   {
-    "locationID": "guid",
+    "locationID": "{{LocationId}}",
     "name": "string",
     "address": "string",
     "type": "string",
     "clientID": "guid"
   }
+}
+
+vars:pre-request {
+  LocationId: location
 }
 
 settings {
