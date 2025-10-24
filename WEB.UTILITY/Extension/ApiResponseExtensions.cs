@@ -45,5 +45,10 @@ namespace WEB.UTILITY.Extension
         {
             return new ObjectResult(response) { StatusCode = StatusCodes.Status500InternalServerError };
         }
+
+        public static IActionResult ToConflictResult<T>(this ApiResponse<T> response)
+        {
+            return new ConflictObjectResult(response) { StatusCode = StatusCodes.Status409Conflict };
+        }
     }
 }

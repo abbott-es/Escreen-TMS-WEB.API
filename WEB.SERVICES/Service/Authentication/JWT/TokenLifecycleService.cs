@@ -1,10 +1,7 @@
-﻿using LanguageExt;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using WEB.DOMAIN.Entity.Authentication;
+using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.IService.IAuthentication;
 using WEB.SERVICES.IService.IGeneric;
@@ -18,11 +15,11 @@ namespace WEB.SERVICES.Service.Authentication.JWT
     public class TokenLifecycleService : BaseService<TokenLifecycleService>, ITokenLifecycleService
     {
         private readonly IRepository<UserToken> _tokenRepository;
+        private readonly IRepository<Auth> _authRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
         private readonly JwtSettings _settings;
         private readonly IUserContextService _userContextService;
-        private readonly IAppLogger<TokenLifecycleService> _appLogger;
 
         public TokenLifecycleService(
             IRepository<UserToken> tokenRepository,
@@ -30,16 +27,18 @@ namespace WEB.SERVICES.Service.Authentication.JWT
             ITokenService tokenService,
             JwtSettings settings,
             IUserContextService userContextService,
-            IAppLogger<TokenLifecycleService> appLogger) : base(appLogger)
+            IAppLogger<TokenLifecycleService> appLogger,
+            IRepository<Auth> authRepository) : base(appLogger)
         {
             _tokenRepository = tokenRepository;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _settings = settings;
             _userContextService = userContextService;
+            _authRepository = authRepository;
         }
 
-        public async Task<UserToken> IssueTokenAsync(Guid userId, string jti, CancellationToken ct = default)
+        public async Task<UserToken> IssueTokenAsync(User user, string jti, CancellationToken ct = default)
         {
             return await ExecuteWithLoggingAsync(async ct =>
             {
@@ -48,7 +47,7 @@ namespace WEB.SERVICES.Service.Authentication.JWT
                     var token = new UserToken
                     {
                         TokenID = Guid.NewGuid(),
-                        UserID = userId,
+                        UserID = user.UserID,
                         AccessTokenJti = jti,
                         RefreshToken = _tokenService.GenerateRefreshToken(),
                         RefreshTokenExpiry = DateTime.UtcNow.AddMinutes(_settings.RefreshTokenExpiryMinutes),
@@ -61,14 +60,16 @@ namespace WEB.SERVICES.Service.Authentication.JWT
 
                     await _unitOfWork.ExecuteAsync(async ct =>
                     {
+                        user.Auth.LastLogin = DateTime.UtcNow;
                         await _tokenRepository.AddAsync(token, ct);
+                        _authRepository.Update(user.Auth);
                     }, ct);
 
                     return token;
                 }
                 catch (Exception err)
                 {
-                    _appLogger.LogError(err, $"Error adding token for userId: {userId}");
+                    _logger.LogError(err, $"Error adding token for userId: {user.UserID}");
                     return null;
                 }
             }, nameof(IssueTokenAsync), ct);
@@ -151,11 +152,12 @@ namespace WEB.SERVICES.Service.Authentication.JWT
                 {
                     return await _tokenRepository
                         .Query(asNoTracking: true)
+                        .Where(t => t.RefreshToken == refreshToken && !t.IsRevoked)
                         .Include(t => t.User)
-                        .ThenInclude(u => u.Role)
-                        .Include(a => a.User)
-                        .ThenInclude(a => a.Auth)
-                        .FirstOrDefaultAsync(t => t.RefreshToken == refreshToken && !t.IsRevoked, ct);
+                            .ThenInclude(u => u.Role)
+                        .Include(t => t.User)
+                            .ThenInclude(u => u.Auth)
+                        .FirstOrDefaultAsync(ct);
                 }, ct);
             }
             catch (Exception ex)
@@ -173,8 +175,8 @@ namespace WEB.SERVICES.Service.Authentication.JWT
                 {
                     return await _tokenRepository
                         .Query(asNoTracking: true)
-                        .Include(t => t.User)
-                        .FirstOrDefaultAsync(t => t.AccessTokenJti == jti && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow, ct);
+                        .Where(t => t.AccessTokenJti == jti && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow)
+                        .FirstOrDefaultAsync(ct);
                 }, ct);
             }
             catch (Exception ex)
@@ -215,11 +217,12 @@ namespace WEB.SERVICES.Service.Authentication.JWT
                 {
                     return await _tokenRepository
                         .Query(asNoTracking: true)
+                        .Where(t => t.AccessTokenJti == jti.ToString())
                         .Include(t => t.User)
                             .ThenInclude(u => u.Role)
                         .Include(t => t.User)
                             .ThenInclude(u => u.Auth)
-                        .FirstOrDefaultAsync(t => t.AccessTokenJti == jti.ToString(), ct);
+                        .FirstOrDefaultAsync(ct);
                 }, ct);
             }
             catch (Exception ex)
@@ -267,7 +270,7 @@ namespace WEB.SERVICES.Service.Authentication.JWT
             }
             catch (Exception ex)
             {
-                _appLogger.LogError(ex, "Failed to extract JTI from access token.");
+                _logger.LogError(ex, "Failed to extract JTI from access token.");
                 return null;
             }
         }
@@ -279,28 +282,28 @@ namespace WEB.SERVICES.Service.Authentication.JWT
                 var jti = GetJtiFromToken(accessToken);
                 if (string.IsNullOrEmpty(jti))
                 {
-                    _appLogger.LogWarning("Access token missing JTI.");
+                    _logger.LogWarning("Access token missing JTI.");
                     return false;
                 }
 
                 var token = await GetByRefreshTokenAsync(refreshToken, ct);
                 if (token == null)
                 {
-                    _appLogger.LogWarning("Refresh token not found or revoked.");
+                    _logger.LogWarning("Refresh token not found or revoked.");
                     return false;
                 }
 
                 // Ensure the access token matches the stored JTI
                 if (token.AccessTokenJti != jti)
                 {
-                    _appLogger.LogWarning("Access token JTI mismatch.");
+                    _logger.LogWarning("Access token JTI mismatch.");
                     return false;
                 }
 
                 // Ensure the refresh token is not expired
                 if (token.RefreshTokenExpiry < DateTime.UtcNow)
                 {
-                    _appLogger.LogWarning("Refresh token expired.");
+                    _logger.LogWarning("Refresh token expired.");
                     return false;
                 }
 
@@ -308,7 +311,7 @@ namespace WEB.SERVICES.Service.Authentication.JWT
             }
             catch (Exception ex)
             {
-                _appLogger.LogError(ex, "Error validating access and refresh tokens.");
+                _logger.LogError(ex, "Error validating access and refresh tokens.");
                 return false;
             }
         }
@@ -333,6 +336,28 @@ namespace WEB.SERVICES.Service.Authentication.JWT
             {
                 _logger.LogError(ex, $"Error touching session for TokenID: {tokenId}");
             }
+        }
+
+        public async Task<bool> IsActiveLogin(Guid userID, CancellationToken ct = default)
+        {
+            try
+            {
+                var userToken = await _unitOfWork.ExecuteReadOnlyAsync(async ct =>
+                {
+                    return await _tokenRepository
+                        .Query(asNoTracking: true)
+                        .Where(t => t.UserID == userID && !t.IsRevoked && t.RefreshTokenExpiry > DateTime.UtcNow)
+                        .Select(x => x.AccessTokenJti).ToListAsync(ct);
+                }, ct);
+                if (userToken.Count > 0)
+                    return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error validating the user ID: {userID}");
+            }
+
+            return false;
         }
     }
 }

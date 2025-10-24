@@ -97,10 +97,11 @@ namespace WEB.SERVICES.Service.Authentication
             try
             {
                 var auth = await _authRepository
-                    .Query(asNoTracking: false)
+                    .Query(asNoTracking: true)
                     .Where(a => a.Username == username && a.User.IsActive)
                     .Include(a => a.User)
-                    .ThenInclude(x => x.Role).FirstOrDefaultAsync(ct);
+                        .ThenInclude(x => x.Role)
+                    .FirstOrDefaultAsync(ct);
 
                 if (auth == null)
                 {
@@ -133,27 +134,6 @@ namespace WEB.SERVICES.Service.Authentication
             {
                 _logger.LogError(ex, $"Error validating credentials for user: {username}");
                 throw;
-            }
-        }
-
-        private async Task UpdateLastLoginAsync(Auth auth, CancellationToken ct = default)
-        {
-            try
-            {
-                if (auth != null)
-                {
-                    auth.LastLogin = DateTime.UtcNow;
-                    _authRepository.Update(auth);
-                    _logger.LogInformation($"Updated LastLogin for user: {auth.Username}");
-                }
-                else
-                {
-                    _logger.LogWarning($"User not found for LastLogin update: {auth.Username}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error updating LastLogin for user: {auth.Username}");
             }
         }
 
@@ -227,11 +207,14 @@ namespace WEB.SERVICES.Service.Authentication
                 if (user == null)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid Credentials"], HttpStatusCode.NotFound));
 
-                await UpdateLastLoginAsync(user.Auth, ct);
+                if (await _tokenLifecycleService.IsActiveLogin(user.UserID, ct))
+                {
+                    return Prelude.Left(ApiResponse<string>.Fail(["This account is currently logged in. Please log out before attempting to log in again."], HttpStatusCode.Conflict));
+                }
 
                 var token = _tokenService.GenerateAccessToken(user);
 
-                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user.UserID, token.jti, ct);
+                var tokenRecord = await _tokenLifecycleService.IssueTokenAsync(user, token.jti, ct);
                 if (tokenRecord == null)
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["Not able to issue token"]));
