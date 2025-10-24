@@ -19,12 +19,30 @@ namespace WEB.SERVICES.Service.Authentication.JWT
         {
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
-            if (!string.IsNullOrEmpty(token) && !token.Equals("Bearer", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(token))
             {
                 await using var scope = _serviceProvider.CreateAsyncScope();
                 var tokenLifecycleService = scope.ServiceProvider.GetRequiredService<ITokenLifecycleService>();
-                var jti = tokenLifecycleService.GetJtiFromToken(token);
+                var tokenService = scope.ServiceProvider.GetRequiredService<ITokenService>();
+                try
+                {
+                    var principal = tokenService.ValidateAccessToken(token, false);
+                    var result = principal(); // Invoke the delegate
+                    if (result == null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                        await context.Response.WriteAsync("Access token is invalid. Token = " + token);
+                        return;
+                    }
+                }
+                catch (Exception)
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await context.Response.WriteAsync("Access token is invalid. Token = " + token);
+                    return;
+                }
 
+                var jti = tokenLifecycleService.GetJtiFromToken(token);
                 if (!string.IsNullOrEmpty(jti) && await tokenLifecycleService.IsAccessTokenRevokedAsync(jti))
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
