@@ -10,4 +10,9 @@
         public CoordinateDto EndRoute { get; set; }
         public List<StopDto>? StopRoute { get; set; }
     }
+
+    public class CreateBookingDto : BookingDto
+    {
+
+    }
 }

@@ -10,10 +10,11 @@ using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
 using WEB.SERVICES.DTO.Generic;
-using WEB.SERVICES.IService;
 using WEB.SERVICES.IService.IAuthentication;
+using WEB.SERVICES.IService.IControl_Tower;
 using WEB.SERVICES.IService.IGeneric;
 using WEB.SERVICES.MappingProfile.Authentication;
+using WEB.SERVICES.MappingProfile.Control_Tower;
 using WEB.SERVICES.MappingProfile.Generic;
 using WEB.SERVICES.Service.Authentication;
 using WEB.SERVICES.Service.Authentication.JWT;
@@ -40,6 +41,9 @@ namespace WEB.SERVICES
                 cfg.AddProfile<ClientProfile>();
                 cfg.AddProfile<VehicleProfile>();
                 cfg.AddProfile<LocationProfile>();
+                cfg.AddProfile<BookingProfile>();
+                cfg.AddProfile<CoordinateProfile>();
+                cfg.AddProfile<StopProfile>();
             });
             services.AddTransient<IgnoreAuthInClientMapping>();
 
