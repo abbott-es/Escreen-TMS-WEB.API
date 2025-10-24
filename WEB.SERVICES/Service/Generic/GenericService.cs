@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using DocumentFormat.OpenXml.Office2010.Excel;
 using FluentValidation;
 using LanguageExt;
 using System.Net;
@@ -13,7 +12,7 @@ namespace WEB.SERVICES.Service.Generic
 {
     public class GenericService<TEntity, TDto> : IGenericService<TDto>
         where TEntity : class
-        where TDto : class
+        where TDto : IBaseDto
     {
         protected readonly IRepository<TEntity> _repository;
         protected readonly IUnitOfWork _unitOfWork;
@@ -93,14 +92,14 @@ namespace WEB.SERVICES.Service.Generic
             }
         }
 
-        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(Guid id, TDto dto, CancellationToken ct = default, params string[] includePaths)
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<string>>> UpdateAsync(TDto dto, CancellationToken ct = default, params string[] includePaths)
         {
             try
             {
-                var existingEntity = await _repository.GetByIdAsync(id, ct, includePaths);
+                var existingEntity = await _repository.GetByIdAsync(dto.ID, ct, includePaths);
                 if (existingEntity == null)
                 {
-                    return Prelude.Left(ApiResponse<string>.Fail([$"This entity id is not found: {id}"], HttpStatusCode.NotFound));
+                    return Prelude.Left(ApiResponse<string>.Fail([$"This entity id is not found: {dto.ID}"], HttpStatusCode.NotFound));
                 }
 
                 _mapper.Map(dto, existingEntity);

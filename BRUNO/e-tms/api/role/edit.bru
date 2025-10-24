@@ -5,20 +5,26 @@ meta {
 }
 
 put {
-  url: {{BASE_URL}}/role-api/api/role
+  url: {{BASE_URL}}/role-api/api/role?id={{RoleId}}
   body: json
   auth: inherit
 }
 
 params:query {
-  ~Includes: 
+  id: {{RoleId}}
+  ~Includes: {{Includes}}
 }
 
 body:json {
   {
-    "roleId": "guid",
+    "roleId": "{{RoleId}}",
     "roleName": "string"
   }
+}
+
+vars:pre-request {
+  RoleId: roleid
+  Includes: incl
 }
 
 settings {

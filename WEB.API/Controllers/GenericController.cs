@@ -7,7 +7,7 @@ namespace WEB.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class GenericController<TDto> : ControllerBase where TDto : class
+    public class GenericController<TDto> : ControllerBase where TDto : IBaseDto
     {
         private readonly IGenericService<TDto> _genericService;
 
@@ -56,14 +56,13 @@ namespace WEB.API.Controllers
         /// <summary>
         /// Updates an existing entity.
         /// </summary>
-        /// <param name="id">Entity id</param>
         /// <param name="entity">The entity with updated data.</param>
         /// <param name="ct">Optional cancellation token.</param>
         /// <returns>An API response indicating success or failure.</returns>
         [HttpPut]
-        public virtual async Task<IActionResult> Update([FromQuery] Guid id, [FromQuery] string[] includes, [FromBody] TDto entity, CancellationToken ct = default)
+        public virtual async Task<IActionResult> Update([FromQuery] string[] includes, [FromBody] TDto entity, CancellationToken ct = default)
         {
-            return await ResultMatcher.MatchResultAsync(_genericService.UpdateAsync(id, entity, ct, includes));
+            return await ResultMatcher.MatchResultAsync(_genericService.UpdateAsync(entity, ct, includes));
         }
 
         /// <summary>

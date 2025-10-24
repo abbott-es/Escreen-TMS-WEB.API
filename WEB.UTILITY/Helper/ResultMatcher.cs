@@ -30,6 +30,7 @@ namespace WEB.UTILITY.Helper
                 HttpStatusCode.Unauthorized => response.ToUnauthorizedResult(),
                 HttpStatusCode.Forbidden => response.ToForbiddenResult(),
                 HttpStatusCode.InternalServerError => response.ToInternalServerErrorResult(),
+                HttpStatusCode.Conflict => response.ToConflictResult(),
                 _ => new ObjectResult(response) { StatusCode = (int)response.StatusCode }
             };
         }
