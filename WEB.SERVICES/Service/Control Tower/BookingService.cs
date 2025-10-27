@@ -3,8 +3,10 @@ using FluentValidation;
 using LanguageExt;
 using System.Net;
 using WEB.DOMAIN.Entity;
+using WEB.DOMAIN.Entity.Generic;
 using WEB.DOMAIN.Interface;
 using WEB.SERVICES.DTO;
+using WEB.SERVICES.DTO.Control_Tower;
 using WEB.SERVICES.IService.IControl_Tower;
 using WEB.SERVICES.Service.Generic;
 using WEB.UTILITY.Enums;
@@ -18,17 +20,19 @@ namespace WEB.SERVICES.Service.Control_Tower
         private readonly IRepository<Booking> _bookingRepository;
         private readonly IRepository<Stop> _stopRepository;
         private readonly IValidator<BookingDto> _bookingValidator;
+        private readonly IRepository<UserInfo> _userInfoRepository;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
         public BookingService(IAppLogger<BookingService> appLogger, IValidator<BookingDto> bookingValidator,
             IMapper mapper, IUnitOfWork unitOfWork, IRepository<Booking> bookingRepository,
-            IRepository<Stop> stopRepository) : base(appLogger)
+            IRepository<Stop> stopRepository, IRepository<UserInfo> userInfoRepository) : base(appLogger)
         {
             _bookingValidator = bookingValidator;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _bookingRepository = bookingRepository;
             _stopRepository = stopRepository;
+            _userInfoRepository = userInfoRepository;
         }
 
         public async Task<Either<ApiResponse<string>, ApiResponse<CreateBookingDto>>> CreateBookingAsync(CreateBookingDto bookingDto, CancellationToken ct)
@@ -109,6 +113,35 @@ namespace WEB.SERVICES.Service.Control_Tower
                     return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
                 }
             }, nameof(CompleteBookingAsync), ct);
+        }
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<SummaryDetailDto>>> GetSummaryDetailAsync(SummaryDto summaryDto, CancellationToken ct)
+        {
+            return await ExecuteAndEitherAsync<string, SummaryDetailDto>(async ct =>
+            {
+                try
+                {
+                    if (summaryDto.DriverUserID == Guid.Empty)
+                    {
+                        return Prelude.Left(ApiResponse<string>.Fail(["Driver Id is required"], HttpStatusCode.UnprocessableEntity));
+                    }
+
+                    var bookingUserDetail = await _userInfoRepository.GetAllAsync(x => x.UserID == summaryDto.DriverUserID || x.UserID == summaryDto.HelperUserID, ct);
+                    var summaryDetailDto = new SummaryDetailDto()
+                    {
+                        DriverUserID = summaryDto.DriverUserID,
+                        HelperUserID = summaryDto.HelperUserID,
+                        DriverFullName = bookingUserDetail.Where(x => x.UserID == summaryDto.DriverUserID).Select(x => (!string.IsNullOrEmpty(x.MiddleName) ? $"{x.FirstName} {x.MiddleName} {x.LastName}".Trim() : $"{x.FirstName} {x.LastName}".Trim())).FirstOrDefault(),
+                        HelperFullName = bookingUserDetail.Where(x => x.UserID == summaryDto.HelperUserID).Select(x => (!string.IsNullOrEmpty(x.MiddleName) ? $"{x.FirstName} {x.MiddleName} {x.LastName}".Trim() : $"{x.FirstName} {x.LastName}".Trim())).FirstOrDefault()
+                    };
+                    return Prelude.Right(ApiResponse<SummaryDetailDto>.Ok(summaryDetailDto, HttpStatusCode.OK, "Retrieved Successful"));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error upon completing booking");
+                    return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+                }
+            }, nameof(GetSummaryDetailAsync), ct);
         }
     }
 }

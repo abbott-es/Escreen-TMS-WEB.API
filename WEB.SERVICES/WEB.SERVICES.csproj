@@ -20,8 +20,4 @@
     <ProjectReference Include="..\WEB.UTILITY\WEB.UTILITY.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="DTO\Control Tower\" />
-  </ItemGroup>
-
 </Project>

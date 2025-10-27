@@ -1,5 +1,6 @@
 ﻿using LanguageExt;
 using WEB.SERVICES.DTO;
+using WEB.SERVICES.DTO.Control_Tower;
 using WEB.UTILITY.Helper;
 
 namespace WEB.SERVICES.IService.IControl_Tower
@@ -10,8 +11,9 @@ namespace WEB.SERVICES.IService.IControl_Tower
             CancellationToken ct);
         Task<Either<ApiResponse<string>, ApiResponse<AddStopDto>>> AddStopBookingAsync(AddStopDto addStopDto,
             CancellationToken ct);
-
         Task<Either<ApiResponse<string>, ApiResponse<string>>> CompleteBookingAsync(Guid bookingID,
+            CancellationToken ct);
+        Task<Either<ApiResponse<string>, ApiResponse<SummaryDetailDto>>> GetSummaryDetailAsync(SummaryDto summaryDto,
             CancellationToken ct);
     }
 }
