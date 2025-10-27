@@ -21,11 +21,13 @@ namespace WEB.SERVICES.Service.Control_Tower
         private readonly IRepository<Stop> _stopRepository;
         private readonly IValidator<BookingDto> _bookingValidator;
         private readonly IRepository<UserInfo> _userInfoRepository;
+        private readonly IRepository<Vehicle> _vehicleRepository;
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
         public BookingService(IAppLogger<BookingService> appLogger, IValidator<BookingDto> bookingValidator,
             IMapper mapper, IUnitOfWork unitOfWork, IRepository<Booking> bookingRepository,
-            IRepository<Stop> stopRepository, IRepository<UserInfo> userInfoRepository) : base(appLogger)
+            IRepository<Stop> stopRepository, IRepository<UserInfo> userInfoRepository,
+            IRepository<Vehicle> vehicleRepository) : base(appLogger)
         {
             _bookingValidator = bookingValidator;
             _unitOfWork = unitOfWork;
@@ -33,6 +35,7 @@ namespace WEB.SERVICES.Service.Control_Tower
             _bookingRepository = bookingRepository;
             _stopRepository = stopRepository;
             _userInfoRepository = userInfoRepository;
+            _vehicleRepository = vehicleRepository;
         }
 
         public async Task<Either<ApiResponse<string>, ApiResponse<CreateBookingDto>>> CreateBookingAsync(CreateBookingDto bookingDto, CancellationToken ct)
@@ -127,12 +130,17 @@ namespace WEB.SERVICES.Service.Control_Tower
                     }
 
                     var bookingUserDetail = await _userInfoRepository.GetAllAsync(x => x.UserID == summaryDto.DriverUserID || x.UserID == summaryDto.HelperUserID, ct);
+                    var bookingVehicleDetail = await _vehicleRepository.GetByIdAsync(summaryDto.VehicleID, ct, "Chassis");
                     var summaryDetailDto = new SummaryDetailDto()
                     {
                         DriverUserID = summaryDto.DriverUserID,
                         HelperUserID = summaryDto.HelperUserID,
                         DriverFullName = bookingUserDetail.Where(x => x.UserID == summaryDto.DriverUserID).Select(x => (!string.IsNullOrEmpty(x.MiddleName) ? $"{x.FirstName} {x.MiddleName} {x.LastName}".Trim() : $"{x.FirstName} {x.LastName}".Trim())).FirstOrDefault(),
-                        HelperFullName = bookingUserDetail.Where(x => x.UserID == summaryDto.HelperUserID).Select(x => (!string.IsNullOrEmpty(x.MiddleName) ? $"{x.FirstName} {x.MiddleName} {x.LastName}".Trim() : $"{x.FirstName} {x.LastName}".Trim())).FirstOrDefault()
+                        HelperFullName = bookingUserDetail.Where(x => x.UserID == summaryDto.HelperUserID).Select(x => (!string.IsNullOrEmpty(x.MiddleName) ? $"{x.FirstName} {x.MiddleName} {x.LastName}".Trim() : $"{x.FirstName} {x.LastName}".Trim())).FirstOrDefault(),
+                        Model = bookingVehicleDetail.Model,
+                        PlateNumber = bookingVehicleDetail.PlateNumber,
+                        Type = bookingVehicleDetail.Chassis.Type,
+                        SerialNumber = bookingVehicleDetail.Chassis.SerialNumber
                     };
                     return Prelude.Right(ApiResponse<SummaryDetailDto>.Ok(summaryDetailDto, HttpStatusCode.OK, "Retrieved Successful"));
                 }
