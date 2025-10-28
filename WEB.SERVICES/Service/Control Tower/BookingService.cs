@@ -151,5 +151,23 @@ namespace WEB.SERVICES.Service.Control_Tower
                 }
             }, nameof(GetSummaryDetailAsync), ct);
         }
+
+        public async Task<Either<ApiResponse<string>, ApiResponse<BookingDetailDto>>> GetAllBookings(CancellationToken ct)
+        {
+            return await ExecuteAndEitherAsync<string, BookingDetailDto>(async ct =>
+            {
+                try
+                {
+                    var booking = await _bookingRepository.GetAllAsync(null, ct, true, ["StartRoute", "EndRoute", "Driver", "Helper", "Vehicle", "StopRoute"]);
+                    var dto = _mapper.Map<BookingDetailDto>(booking);
+                    return Prelude.Right(ApiResponse<BookingDetailDto>.Ok(dto));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error upon completing booking");
+                    return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+                }
+            }, nameof(CompleteBookingAsync), ct);
+        }
     }
 }

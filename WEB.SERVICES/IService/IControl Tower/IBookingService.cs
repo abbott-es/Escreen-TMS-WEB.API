@@ -15,5 +15,6 @@ namespace WEB.SERVICES.IService.IControl_Tower
             CancellationToken ct);
         Task<Either<ApiResponse<string>, ApiResponse<SummaryDetailDto>>> GetSummaryDetailAsync(SummaryDto summaryDto,
             CancellationToken ct);
+        Task<Either<ApiResponse<string>, ApiResponse<BookingDetailDto>>> GetAllBookings(CancellationToken ct);
     }
 }

@@ -74,7 +74,7 @@ namespace WEB.CONTROL.TOWER.Controllers
         [HttpGet("get-all-bookings")]
         public async Task<IActionResult> GetAllBooking(CancellationToken ct = default)
         {
-            return null;
+            return await ResultMatcher.MatchResultAsync(_bookingService.GetAllBookings(ct));
         }
 
         [HttpGet("get-all-bookings-history")]

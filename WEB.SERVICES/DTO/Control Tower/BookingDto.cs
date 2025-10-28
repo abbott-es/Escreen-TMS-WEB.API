@@ -15,4 +15,12 @@
     {
 
     }
+
+    public class BookingDetailDto : BookingDto
+    {
+        public Guid BookingID { get; set; }
+        public string DriverFullName { get; set; }
+        public string HelperFullName { get; set; }
+        public string Status { get; set; }
+    }
 }
