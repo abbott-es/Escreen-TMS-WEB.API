@@ -206,11 +206,11 @@ namespace WEB.SERVICES.Service.Authentication
                 var user = await ValidateCredentialsAsync(authDto.Username, authDto.Password, ct);
                 if (user == null)
                     return Prelude.Left(ApiResponse<string>.Fail(["Invalid Credentials"], HttpStatusCode.NotFound));
-
-                if (await _tokenLifecycleService.IsActiveLogin(user.UserID, ct))
-                {
-                    return Prelude.Left(ApiResponse<string>.Fail(["This account is currently logged in. Please log out before attempting to log in again."], HttpStatusCode.Conflict));
-                }
+                //For future enhancement
+                //if (await _tokenLifecycleService.IsActiveLogin(user.UserID, ct))
+                //{
+                //    return Prelude.Left(ApiResponse<string>.Fail(["This account is currently logged in. Please log out before attempting to log in again."], HttpStatusCode.Conflict));
+                //}
 
                 var token = _tokenService.GenerateAccessToken(user);
 
