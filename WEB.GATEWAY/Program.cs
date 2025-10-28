@@ -205,6 +205,7 @@ Action<IReverseProxyApplicationBuilder> UseProxyPipeline()
 {
     async Task CustomProxyMiddleware(HttpContext context, RequestDelegate next)
     {
+        Log.ForContext<Program>().Information("Gateway Ready");
         await next(context); // Continue to next middleware (YARP)
     }
     return proxy =>
