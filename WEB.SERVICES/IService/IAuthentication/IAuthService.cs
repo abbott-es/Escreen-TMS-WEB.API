@@ -15,7 +15,7 @@ namespace WEB.SERVICES.IService.IAuthentication
             bool isKeepAlive = false,
             CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryCreateSessionAsync(Guid jti, CancellationToken ct = default);
-        Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryLoginAsync(AuthDto authDto, CancellationToken ct = default);
+        Task<Either<ApiResponse<string>, ApiResponse<LoginResponseDto>>> TryLoginAsync(AuthDto authDto, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryRefreshTokenAsync(string? refreshToken, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<string>>> TryRevokeTokenAsync(Guid tokenId, CancellationToken ct = default);
         Task<Either<ApiResponse<string>, ApiResponse<string>>> TryLogoutAsync(LogoutDto request, CancellationToken ct = default);

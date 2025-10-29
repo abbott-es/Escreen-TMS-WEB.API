@@ -199,7 +199,7 @@ namespace WEB.SERVICES.Service.Authentication
                 return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
             }
         }
-        public async Task<Either<ApiResponse<string>, ApiResponse<SessionInfoDto>>> TryLoginAsync(AuthDto authDto, CancellationToken ct = default)
+        public async Task<Either<ApiResponse<string>, ApiResponse<LoginResponseDto>>> TryLoginAsync(AuthDto authDto, CancellationToken ct = default)
         {
             try
             {
@@ -219,12 +219,13 @@ namespace WEB.SERVICES.Service.Authentication
                 {
                     return Prelude.Left(ApiResponse<string>.Fail(["Not able to issue token"]));
                 }
-                var response = new SessionInfoDto
+                var response = new LoginResponseDto
                 {
                     AccessToken = token.accessToken,
-                    RefreshToken = tokenRecord.RefreshToken
+                    RefreshToken = tokenRecord.RefreshToken,
+                    RoleID = user.RoleID
                 };
-                return Prelude.Right(ApiResponse<SessionInfoDto>.Ok(response, HttpStatusCode.OK, "Login Successful"));
+                return Prelude.Right(ApiResponse<LoginResponseDto>.Ok(response, HttpStatusCode.OK, "Login Successful"));
             }
             catch (Exception ex)
             {
