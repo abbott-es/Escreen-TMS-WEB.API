@@ -10,11 +10,14 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
+using WEB.GATEWAY;
 using WEB.GATEWAY.Interfaces;
+using WEB.GATEWAY.Middleware.GatewayRouteHandlerMiddleware;
 using WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 using WEB.GATEWAY.Models;
 using WEB.GATEWAY.Services;
@@ -59,13 +62,17 @@ builder.Services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
 // Setup Reverse Proxy
 Log.ForContext<Program>().Information("Setting up Reverse Proxy");
 
-builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY));
+builder.Services.Configure<GatewaySettings>(builder.Configuration.GetSection(Constants.GATEWAY));
 
-builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(WEB.GATEWAY.Constants.REVERSE_PROXY))
+builder.Services.Configure<ReverseProxy>(builder.Configuration.GetSection(Constants.REVERSE_PROXY));
+
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection(Constants.REVERSE_PROXY))
 .AddTransforms(builderContext =>
 {
     builderContext.AddRequestTransform(async transformContext =>
     {
+        await GatewayRoutingPathFilterByQueryParam(transformContext);
+
         var incomingHeaders = transformContext.HttpContext.Request.Headers;
 
         var restrictedHeaders = new HashSet<string>(new[] { "Host", "Content-Length", "Transfer-Encoding" }, StringComparer.OrdinalIgnoreCase);
@@ -211,6 +218,30 @@ Action<IReverseProxyApplicationBuilder> UseProxyPipeline()
     return proxy =>
     {
         proxy.Use(CustomProxyMiddleware);
+        proxy.UseMiddleware<GatewayRouteHandlerMiddleware>();
         proxy.UseMiddleware<ReverseProxyMiddleware>();
     };
+}
+
+static Task GatewayRoutingPathFilterByQueryParam(RequestTransformContext transformContext)
+{
+    GatewaySettings settings = new();
+    if(transformContext is null || settings is null)
+    {
+        return Task.CompletedTask;
+    }
+    if (transformContext.HttpContext.Request.Path.HasValue && transformContext.HttpContext.Request.Path.Value.Equals(settings?.ApiPath, StringComparison.OrdinalIgnoreCase) && transformContext.HttpContext.Request.Query.ContainsKey(settings?.QueryKey!))
+    {
+        transformContext.Path = settings?.RoutePathByKey;
+
+        var updatedParams = new Dictionary<string, StringValues>();
+
+        foreach (var param in transformContext.HttpContext.Request.Query ?? Enumerable.Empty<KeyValuePair<string, StringValues>>())
+        {
+            var key = param.Key == settings?.QueryKey ? settings?.TransformQueryKey : param.Key;
+            updatedParams[key!] = param.Value!;
+        }
+        transformContext.HttpContext.Request.Query = new QueryCollection(updatedParams);
+    }
+    return Task.CompletedTask;
 }
