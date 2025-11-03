@@ -36,6 +36,7 @@ namespace WEB.SERVICES
                 cfg.AddProfile<ClientProfile>();
                 cfg.AddProfile<VehicleProfile>();
                 cfg.AddProfile<LocationProfile>();
+                cfg.AddProfile<GatewayProfile>();
             });
             services.AddTransient<IgnoreAuthInClientMapping>();
 
@@ -61,6 +62,7 @@ namespace WEB.SERVICES
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IClientService, ClientService>();
+            services.AddScoped<IGatewayService, GatewayService>();
 
             return services;
         }
@@ -73,6 +75,7 @@ namespace WEB.SERVICES
             services.AddScoped(typeof(IGenericService<UserDto>), typeof(GenericService<User, UserDto>));
             services.AddScoped(typeof(IGenericService<LocationDto>), typeof(GenericService<Location, LocationDto>));
             services.AddScoped(typeof(IGenericService<VehicleDto>), typeof(GenericService<Vehicle, VehicleDto>));
+            services.AddScoped(typeof(IGenericService<GatewayDto>), typeof(GenericService<Gateway, GatewayDto>));
             return services;
         }
 
@@ -98,6 +101,7 @@ namespace WEB.SERVICES
             services.AddScoped<IValidator<LocationDto>, LocationDtoValidator>();
             services.AddValidatorsFromAssemblyContaining<VehicleDtoValidator>();
             services.AddScoped<IValidator<VehicleDto>, VehicleDtoValidator>();
+            services.AddScoped<IValidator<GatewayDto>, GatewayValidator>();
 
             return services;
         }

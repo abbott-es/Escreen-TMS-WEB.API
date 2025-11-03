@@ -73,7 +73,7 @@ namespace WEB.SERVICES.Service.Generic
                 if (!validate.IsValid)
                 {
                     var errors = validate.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                    return Prelude.Left(ApiResponse<string>.Fail(errors.Select(x => x.ErrorMessage).ToList(), HttpStatusCode.InternalServerError));
+                    return Prelude.Left(ApiResponse<string>.Fail(errors.Select(x => x.ErrorMessage).ToList(), HttpStatusCode.BadRequest));
                 }
 
                 var entity = _mapper.Map<TEntity>(dto);
