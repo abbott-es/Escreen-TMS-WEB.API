@@ -61,18 +61,13 @@ public class ReverseProxyMiddleware
             }
 
             var path = context.Request.Path.Value ?? string.Empty;
-
-            RouteValueDictionary routeValues = new();
+            static string NormalizePath(string p) => p?.Trim()?.ToLowerInvariant()!;
 
             var routeMatch = routes
                 .Where(r => r.Value?.Match?.Path != null)
-                .Select(r =>
-                {
-                    var template = TemplateParser.Parse(r.Value.Match.Path);
-                    var matcher = new TemplateMatcher(template, new RouteValueDictionary());
-                    return matcher.TryMatch(path, routeValues) ? r.Value : null;
-                })
-                .FirstOrDefault(r => r != null);
+                .FirstOrDefault(r =>
+                    NormalizePath(r.Value.Match.Path!).Equals(NormalizePath(path), StringComparison.OrdinalIgnoreCase)
+                ).Value;
 
 
             // endpoint matching
