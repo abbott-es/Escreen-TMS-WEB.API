@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using WEB.DOMAIN.Entity;
 using WEB.SERVICES.DTO;
+using WEB.SERVICES.MappingProfile.Generic;
 using WEB.UTILITY.Enums;
 
 namespace WEB.SERVICES.MappingProfile.Control_Tower
@@ -12,7 +13,8 @@ namespace WEB.SERVICES.MappingProfile.Control_Tower
             CreateMap<Booking, BookingDto>();
             CreateMap<CreateBookingDto, Booking>()
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(_ => (int)BookingStatus.Pending))
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+                .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom<GetSessionResolver<CreateBookingDto, Booking, string>>());
 
             CreateMap<Booking, BookingDetailDto>()
                 .ForMember(dest => dest.DriverFullName, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Driver.UserInfo.MiddleName) ? $"{src.Driver.UserInfo.FirstName} {src.Driver.UserInfo.MiddleName} {src.Driver.UserInfo.LastName}".Trim() : $"{src.Driver.UserInfo.FirstName} {src.Driver.UserInfo.LastName}".Trim()))

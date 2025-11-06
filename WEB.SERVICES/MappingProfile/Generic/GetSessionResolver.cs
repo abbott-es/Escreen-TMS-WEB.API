@@ -1,11 +1,9 @@
 ﻿using AutoMapper;
-using WEB.DOMAIN.Entity.Generic;
-using WEB.SERVICES.DTO.Generic;
 using WEB.SERVICES.IService.IGeneric;
 
 namespace WEB.SERVICES.MappingProfile.Generic
 {
-    public class GetSessionResolver : IValueResolver<UserDto, User, string>
+    public class GetSessionResolver<TSource, TDestination, TDestMember> : IValueResolver<TSource, TDestination, TDestMember>
     {
         private readonly IUserContextService _userContextService;
 
@@ -14,9 +12,11 @@ namespace WEB.SERVICES.MappingProfile.Generic
             _userContextService = userContextService;
         }
 
-        public string Resolve(UserDto source, User destination, string destMember, ResolutionContext context)
+        public TDestMember Resolve(TSource source, TDestination destination, TDestMember destMember, ResolutionContext context)
         {
-            return _userContextService.UserId;
+            object value = _userContextService.UserId;
+
+            return (TDestMember)value;
         }
     }
 }

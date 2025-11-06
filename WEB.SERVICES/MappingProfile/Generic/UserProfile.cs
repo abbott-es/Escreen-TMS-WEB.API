@@ -11,7 +11,7 @@ namespace WEB.SERVICES.MappingProfile.Generic
             CreateMap<UserDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.UserID))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
-                .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom<GetSessionResolver>())
+                .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom<GetSessionResolver<UserDto, User, string>>())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.RoleID, opt => opt.MapFrom(src => src.RoleID))
                 .ForMember(dest => dest.Auth, opt => opt.MapFrom(src => src.Auth))

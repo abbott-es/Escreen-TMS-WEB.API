@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using WEB.DOMAIN.Entity;
 
-namespace WEB.DOMAIN.Config
+namespace WEB.DOMAIN.Config.Control_Tower
 {
     public class BookingConfig : IEntityTypeConfiguration<Booking>
     {
@@ -15,18 +15,20 @@ namespace WEB.DOMAIN.Config
                    .HasMaxLength(50);
 
             builder.Property(b => b.ScheduledDate)
-                   .IsRequired();
+                   .IsRequired(false);
 
             // Relationships                                           
             builder.HasOne(b => b.Client)
                    .WithMany()
                    .HasForeignKey(b => b.ClientID)
-                   .OnDelete(DeleteBehavior.Restrict);
+                   .OnDelete(DeleteBehavior.Restrict)
+                   .IsRequired(false);
 
             builder.HasOne(b => b.Location)
                    .WithMany()
                    .HasForeignKey(b => b.LocationID)
-                   .OnDelete(DeleteBehavior.Restrict);
+                   .OnDelete(DeleteBehavior.Restrict)
+                   .IsRequired(false);
 
             builder.HasOne(b => b.Vehicle)
                    .WithMany()

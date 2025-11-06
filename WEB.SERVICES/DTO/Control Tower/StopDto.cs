@@ -2,11 +2,12 @@
 {
     public class StopDto
     {
-        public CoordinateDto Coordinates { get; set; }
+        public CoordinateDto Coordinate { get; set; }
     }
 
-    public class AddStopDto : StopDto
+    public class AddStopDto
     {
         public Guid BookingID { get; set; }
+        public List<StopDto> Coordinates { get; set; }
     }
 }

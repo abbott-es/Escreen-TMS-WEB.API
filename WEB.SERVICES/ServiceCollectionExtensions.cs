@@ -56,6 +56,7 @@ namespace WEB.SERVICES
             rsaKeyManager.LoadPublicKey(configuration["RsaKeys:Public"]);
             rsaKeyManager.LoadPrivateKey(configuration["RsaKeys:Private"]);
             services.AddSingleton(rsaKeyManager);
+
             services.AddHttpContextAccessor(); // Required for accessing HttpContext
             services.AddScoped<IUserContextService, UserContextService>();
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -64,7 +65,7 @@ namespace WEB.SERVICES
             services.AddSingleton(typeof(IAppLogger<>), typeof(AppLogger<>));
             services.AddScoped<IRsaEncryptionService, RsaEncryptionService>();
             services.AddScoped<PasswordEncryptionResolver>();
-            services.AddTransient<GetSessionResolver>();
+            services.AddTransient(typeof(GetSessionResolver<,,>));
             services.AddTransient<UserWithoutAuthResolver>();
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
