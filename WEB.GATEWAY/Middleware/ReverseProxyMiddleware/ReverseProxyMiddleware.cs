@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Routing.Template;
-using Microsoft.Extensions.Caching.Memory;
+﻿using LanguageExt;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.IO;
 using System.Linq;
@@ -10,6 +8,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
+using WEB.UTILITY.Caching;
+using WEB.UTILITY.LanguageExt;
 using WEB.UTILITY.Logger;
 
 namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
@@ -17,7 +17,7 @@ namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
 public class ReverseProxyMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IMemoryCache _cache;
+    private readonly ICache _cache;
     private readonly IOutputCacheService _policyService;
     private readonly IRateLimitConfigServiceProvider _rateLimitService;
     private readonly IProxyConfigService _routingService;
@@ -27,7 +27,7 @@ public class ReverseProxyMiddleware
 
     public ReverseProxyMiddleware(
         RequestDelegate next,
-        IMemoryCache cache,
+        ICache cache,
         IOutputCacheService policyService,
         IRateLimitConfigServiceProvider rateLimitService,
         IProxyConfigService routingService,
@@ -51,7 +51,7 @@ public class ReverseProxyMiddleware
         {
             var routes = await _routingService.GetRoutesAsync();
 
-            if(routes == null)
+            if (routes == null)
             {
                 context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
                 context.Response.ContentType = "text/plain";
@@ -60,7 +60,7 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            var path = context.Request.Path.Value ?? string.Empty;
+            string path = context.Request.Path.Value ?? string.Empty;
             static string NormalizePath(string p) => p?.Trim()?.ToLowerInvariant()!;
 
             var routeMatch = routes
@@ -79,10 +79,10 @@ public class ReverseProxyMiddleware
                 await context.Response.WriteAsync($"Route is not found for this request. Route: '{path}'", context.RequestAborted);
                 return;
             }
-            
+
             //cache policy matching
-            var cachePolicyName = routeMatch.OutputCachePolicy ?? string.Empty;
-            var policy = _policyService.GetPolicy(cachePolicyName);
+            string cachePolicyName = routeMatch.OutputCachePolicy ?? string.Empty;
+            OutputCachePolicy? policy = _policyService.GetPolicy(cachePolicyName);
             if (policy == null)
             {
                 context.Response.StatusCode = StatusCodes.Status412PreconditionFailed;
@@ -92,7 +92,7 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            var ratePolicyName = routeMatch.RateLimiterPolicy ?? string.Empty;
+            string ratePolicyName = routeMatch.RateLimiterPolicy ?? string.Empty;
 
             //rate limit policy matching
             if (string.IsNullOrEmpty(ratePolicyName) || string.IsNullOrEmpty(routeMatch?.RateLimiterPolicy))
@@ -114,9 +114,11 @@ public class ReverseProxyMiddleware
                 await context.Response.WriteAsync($"Rate Limit Policy is invalid for this request. Policy: '{ratePolicyName}'", context.RequestAborted);
                 return;
             }
+            string requestBodyData = await WEB.UTILITY.Helper.StreamReaderHelper.ReadRequestBodyAsync(
+        context);
 
-            var clientId = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (!_rateLimitService.IsRequestAllowed(ratePolicyName, clientId))
+            string clientId = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            if (!(await _rateLimitService.IsRequestAllowed(ratePolicyName, clientId, requestBodyData)))
             {
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 context.Response.ContentType = "text/plain";
@@ -158,15 +160,28 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            var cacheKey = GenerateCacheKey(context, policy, clientId);
+            string cacheKey = string.Empty;
 
-            if (_cache.TryGetValue(cacheKey, out byte[] cachedResponse))
+            if (isRequestCacheable(context))
             {
-                _logger.LogDebug($"Fetch from gateway cache. client: {clientId}");
-                context.Response.ContentType = "application/json";
-                context.Response.StatusCode = StatusCodes.Status200OK;
-                await context.Response.WriteAsync(JsonSerializer.Serialize(cachedResponse), context.RequestAborted);
-                return;
+                cacheKey = await GenerateCacheKey(context, clientId, requestBodyData);
+                var cache = await _cache.Get<string>(cacheKey);
+
+                if (cache.IsSome)
+                {
+                    _logger.LogDebug($"Fetch from gateway cache. client: {clientId}");
+                    context.Response.ContentType = "application/json";
+                    context.Response.StatusCode = StatusCodes.Status200OK;
+
+                    using var data = JsonDocument.Parse(cache.Value());
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(data.RootElement,
+                        options: new JsonSerializerOptions
+                        {
+                            WriteIndented = true
+                        })
+                    , context.RequestAborted);
+                    return;
+                }
             }
 
             var originalBodyStream = context.Response.Body;
@@ -178,13 +193,15 @@ public class ReverseProxyMiddleware
             memoryStream.Seek(0, SeekOrigin.Begin);
             var responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
 
-            // Save to cache
-            _cache.Set(cacheKey, responseBody, policy.Duration);
+
+            await _cache.Set(cacheKey, responseBody, policy.Duration);
 
             // Reset stream and copy to original response
             memoryStream.Seek(0, SeekOrigin.Begin);
             context.Response.Body = originalBodyStream;
             await memoryStream.CopyToAsync(originalBodyStream);
+            memoryStream.Close();
+            memoryStream.Dispose();
         }
         catch (Exception ex)
         {
@@ -195,9 +212,15 @@ public class ReverseProxyMiddleware
 
     }
 
-    private string GenerateCacheKey(HttpContext context, OutputCachePolicy policy, string clientId)
+    private bool isRequestCacheable(HttpContext context)
     {
-        var keyBuilder = new StringBuilder($"{context.Request.Path}:{clientId}:{context.Request.Headers.UserAgent}");
-        return keyBuilder.ToString();
+        return new string[] { "GET", "POST", "PUT" }.Contains(context.Request.Method);
+    }
+
+    private async Task<string> GenerateCacheKey(HttpContext context, string clientId, string body)
+    {
+        var keyBuilder = new StringBuilder($"{context.Request.Path.GetHashCode()}:{clientId.GetHashCode()}:{context.Request.Headers.UserAgent.GetHashCode()}:{context.Request.Headers.Authorization.GetHashCode()}:{body.GetHashCode()}");
+        var key = keyBuilder.ToString();
+        return key;
     }
 }
