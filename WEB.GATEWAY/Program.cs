@@ -78,7 +78,7 @@ builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSecti
     builderContext.AddRequestTransform(async transformContext =>
     {
         await GatewayRoutingPathFilterByQueryParam(transformContext);
-
+        GatewayRoutingTransformContext(transformContext);
         var incomingHeaders = transformContext.HttpContext.Request.Headers;
 
         var restrictedHeaders = new HashSet<string>(new[] { "Host", "Content-Length", "Transfer-Encoding" }, StringComparer.OrdinalIgnoreCase);
@@ -178,6 +178,9 @@ switch (builder.Configuration.GetSection("TurnOffRedisCache").Get<bool>())
         break;
 }
 
+
+builder.Services.Configure<RateLimitingConfig>(builder.Configuration.GetSection("RateLimiting"));
+
 // Setup Rate RateLiming Policies
 builder.Services.AddRateLimiter(options =>
 {
@@ -252,24 +255,19 @@ app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 app.UseOutputCache();
 
-// Use external method to configure proxy pipeline
 Log.ForContext<Program>().Information("Gateway Ready");
+
 app.MapReverseProxy(UseProxyPipeline());
 
 await app.RunAsync();
 await Log.CloseAndFlushAsync();
+await app.DisposeAsync();
 return;
 
 Action<IReverseProxyApplicationBuilder> UseProxyPipeline()
 {
-    async Task CustomProxyMiddleware(HttpContext context, RequestDelegate next)
-    {
-        await next(context); // Continue to next middleware (YARP)
-    }
     return proxy =>
     {
-        proxy.Use(CustomProxyMiddleware);
-        proxy.UseMiddleware<GatewayRouteHandlerMiddleware>();
         proxy.UseMiddleware<ReverseProxyMiddleware>();
     };
 }

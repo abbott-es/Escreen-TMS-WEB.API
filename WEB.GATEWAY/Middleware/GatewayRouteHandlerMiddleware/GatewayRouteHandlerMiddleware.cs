@@ -1,5 +1,8 @@
 ﻿using LanguageExt;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System;
 using System.IO;
@@ -61,7 +64,40 @@ public class GatewayRouteHandlerMiddleware
 
             if (!matchRoute.IsNull() && !matchRoute.Key.IsNull() && !isPostPutMethod)
             {
-                context.Request.Path = matchRoute.Value.Match.Path;
+
+                if (requestKeyNameValue != null)
+                {
+                    System.Collections.Generic.KeyValuePair<string, RouteConfig> byKeyRoute = routeList.FirstOrDefault(r => r.Value.Match.Path != null && r.Value.Match.Path.Equals(_settings.RoutePathByKey!, StringComparison.OrdinalIgnoreCase));
+
+                    RoutePattern routePattern = RoutePatternFactory.Parse(byKeyRoute.Value.Match.Path!);
+
+                    // Build a new endpoint from byKeyRoute
+                    var newEndpoint = new RouteEndpoint(
+                        async ctx => await _next(ctx), // Pass control to next middleware
+                        routePattern,
+                        order: 0,
+                        new EndpointMetadataCollection(byKeyRoute.Value),
+                        displayName: byKeyRoute.Key
+                    );
+
+                    // Transform the query key
+                    IQueryCollection query = context.Request.Query;
+                    System.Collections.Generic.Dictionary<string, string?> queryDict = query.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Count > 0 ? kvp.Value[0] : null
+                    );
+
+                    string firstKey = queryDict.Keys.First();
+                    string? firstValue = queryDict[firstKey];
+                    queryDict.Remove(firstKey);
+                    queryDict[_settings.TransformQueryKey!] = firstValue;
+
+                    var newQueryString = QueryHelpers.AddQueryString("", queryDict);
+                    context.Request.QueryString = new QueryString(newQueryString);
+
+                    // Forward logic
+                    context.SetEndpoint(newEndpoint);
+                }
                 _appLogger.LogDebug($"Forwarding GET request to: {matchRoute.Value.Match.Path}");
             }
         }
