@@ -23,6 +23,7 @@ namespace WEB.UTILITY.Caching
             try
             {
                 await _cache.Remove(key);
+                _logger.LogDebug($"Cache remove prefix key:{key}");
             }
             catch (Exception ex)
             {
@@ -30,15 +31,16 @@ namespace WEB.UTILITY.Caching
             }
         }
 
-        public async Task RemoveByPrefix(string keyPrefix)
+        public async Task RemoveByPrefix(string key)
         {
             try
             {
-                await _cache.RemoveByPrefix(keyPrefix);
+                await _cache.RemoveByPrefix(key);
+                _logger.LogDebug($"Cache remove prefix key:{key}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to clear cache by key prefix. Key prefix: {keyPrefix}.", keyPrefix);
+                _logger.LogError(ex, "Failed to clear cache by key prefix. Key prefix: {key}.", key);
             }
         }
 
@@ -46,7 +48,9 @@ namespace WEB.UTILITY.Caching
         {
             try
             {
-                return await _cache.Get<T>(key);
+                var data = await _cache.Get<T>(key);
+                _logger.LogDebug($" Cache fetch key:{key} | data: {data}");
+                return data;
             }
             catch (Exception ex)
             {
@@ -60,6 +64,7 @@ namespace WEB.UTILITY.Caching
             try
             {
                 await _cache.Set(key, value);
+                _logger.LogDebug($"Cache set key:{key}");
             }
             catch (Exception ex)
             {

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using WEB.GATEWAY.Models;
 
 namespace WEB.GATEWAY.Interfaces;
@@ -21,6 +23,7 @@ public interface IRateLimitConfigServiceProvider
     /// </summary>
     /// <param name="policyName"></param>
     /// <param name="clientId"></param>
+    /// <param name="request"></param>
     /// <returns></returns>
-    bool IsRequestAllowed(string policyName, string clientId);
+    Task<bool> IsRequestAllowed(string policyName, string clientId, string request);
 }

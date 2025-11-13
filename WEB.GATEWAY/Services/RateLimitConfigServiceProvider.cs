@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -13,40 +17,48 @@ public sealed class RateLimitConfigServiceProvider : IRateLimitConfigServiceProv
 {
     private volatile InMemoryConfig _config;
     private readonly IMemoryCache _cache;
-    public RateLimitConfigServiceProvider(IOptionsMonitor<RateLimitingConfig> options)
+    private readonly object _lock = new();
+
+    public RateLimitConfigServiceProvider(IOptionsMonitor<RateLimitingConfig> options, IMemoryCache cache)
     {
+        _cache = cache;
         _config = BuildConfig(options.CurrentValue);
         options.OnChange(updated =>
         {
-            _config = BuildConfig(updated);
-            _config.SignalChange();
+            lock (_lock)
+            {
+                _config = BuildConfig(updated);
+                _config.SignalChange();
+            }
         });
     }
 
-    public bool IsRequestAllowed(string policyName, string clientId)
+    public async Task<bool> IsRequestAllowed(string policyName, string clientId, string req)
     {
-        if (!_config.Policies.TryGetValue(policyName, out var policy))
-            return true;
+        if (!_config.Policies.TryGetValue(policyName, out RateLimitOptions? policy))
+            return false;
 
-        var key = $"{policyName}:{clientId}";
-        var now = DateTime.UtcNow;
+        string key = $"{policy.PolicyName.GetHashCode()}:{policy.PermitLimit.GetHashCode()}:{clientId.GetHashCode()}:{req.GetHashCode()}";
+        
 
-        var entry = _cache.GetOrCreate(key, entry =>
+        List<DateTime>? timestamps = _cache.GetOrCreate(key, entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(policy.WindowSeconds);
             return new List<DateTime>();
         });
 
-        var timestamps = (List<DateTime>)entry!;
-        timestamps.RemoveAll(t => (now - t).TotalSeconds > policy.WindowSeconds);
 
-        if (timestamps.Count >= policy.PermitLimit)
+        var now = DateTime.UtcNow;
+        lock (timestamps) // Ensure thread safety
         {
-            return false;
+            timestamps.RemoveAll(t => (now - t).TotalSeconds > policy.WindowSeconds);
+
+            if (timestamps.Count >= policy.PermitLimit)
+                return false;
+
+            timestamps.Add(now);
         }
 
-        timestamps.Add(now);
-        _cache.Set(key, timestamps, TimeSpan.FromSeconds(policy.WindowSeconds));
         return true;
     }
 

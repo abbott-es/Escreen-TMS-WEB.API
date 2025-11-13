@@ -5,7 +5,7 @@ using WEB.GATEWAY.Interfaces;
 using WEB.UTILITY.Logger;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
+namespace WEB.GATEWAY.Middleware;
 
 public class DefaultErrorHandlingStrategy : IErrorHandlingStrategy
 {
