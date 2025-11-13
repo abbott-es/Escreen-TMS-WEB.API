@@ -5,7 +5,7 @@ using WEB.GATEWAY.Interfaces;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Model;
 
-namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
+namespace WEB.GATEWAY.Middleware;
 
 /// <summary>
 /// Default routing strategy that selects the first available destination.

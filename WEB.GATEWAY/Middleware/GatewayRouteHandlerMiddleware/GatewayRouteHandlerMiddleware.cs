@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WEB.GATEWAY.Interfaces;
@@ -16,7 +15,7 @@ using WEB.UTILITY.Enums;
 using WEB.UTILITY.Logger;
 using Yarp.ReverseProxy.Configuration;
 
-namespace WEB.GATEWAY.Middleware.GatewayRouteHandlerMiddleware;
+namespace WEB.GATEWAY.Middleware;
 
 public class GatewayRouteHandlerMiddleware
 {
@@ -73,7 +72,7 @@ public class GatewayRouteHandlerMiddleware
 
                     // Build a new endpoint from byKeyRoute
                     var newEndpoint = new RouteEndpoint(
-                        async ctx => await _next(ctx), // Pass control to next middleware
+                        async ctx => await _next(), // Pass control to next middleware
                         routePattern,
                         order: 0,
                         new EndpointMetadataCollection(byKeyRoute.Value),

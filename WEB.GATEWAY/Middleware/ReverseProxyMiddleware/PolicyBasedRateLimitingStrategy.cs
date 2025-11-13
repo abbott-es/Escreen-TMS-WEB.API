@@ -7,7 +7,7 @@ using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
 using Yarp.ReverseProxy.Model;
 
-namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
+namespace WEB.GATEWAY.Middleware;
 
 public class PolicyBasedRateLimitingStrategy : IRateLimitingStrategy
 {

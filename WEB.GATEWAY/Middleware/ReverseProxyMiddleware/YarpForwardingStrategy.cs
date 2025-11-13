@@ -6,7 +6,7 @@ using WEB.GATEWAY.Interfaces;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Model;
 
-namespace WEB.GATEWAY.Middleware.ReverseProxyMiddleware;
+namespace WEB.GATEWAY.Middleware;
 
 public class YarpForwardingStrategy : IForwardingStrategy
 {
