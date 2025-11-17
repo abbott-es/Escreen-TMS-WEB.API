@@ -2,6 +2,7 @@
 using WEB.SERVICES.DTO.Generic;
 using WEB.SERVICES.IService.IGeneric;
 using WEB.UTILITY.Helper;
+using WEB.UTILITY.Pagination;
 
 namespace WEB.API.Controllers
 {
@@ -14,6 +15,20 @@ namespace WEB.API.Controllers
         public GenericController(IGenericService<TDto> genericService)
         {
             _genericService = genericService;
+        }
+
+        /// <summary>
+        /// Retrieves a list of entity by its page identifier.
+        /// </summary>
+        /// <param name="number">The number of the entity to retrieve.</param>
+        /// <param name="size">The size of the entity to retrieve.</param>
+        /// <param name="includes">an array of navigation property paths to include.</param>
+        /// <param name="ct">Optional cancellation token.</param>
+        /// <returns>An API response containing the entities or a not found result.</returns>
+        [HttpGet("GetByPage")]
+        public virtual async Task<IActionResult> GetByPagination([FromQuery] int number, [FromQuery] int size, [FromQuery] string[] includes, CancellationToken ct = default)
+        {
+            return await ResultMatcher.MatchResultAsync(_genericService.GetByPaginationAsync(new Page(number, size), ct, includes));
         }
 
         /// <summary>

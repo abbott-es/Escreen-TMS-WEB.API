@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using DocumentFormat.OpenXml.Bibliography;
 using FluentValidation;
 using LanguageExt;
 using System.Net;
@@ -7,6 +8,7 @@ using WEB.SERVICES.DTO.Generic;
 using WEB.SERVICES.IService.IGeneric;
 using WEB.UTILITY.Helper;
 using WEB.UTILITY.Logger;
+using WEB.UTILITY.Pagination;
 
 namespace WEB.SERVICES.Service.Generic
 {
@@ -32,6 +34,21 @@ namespace WEB.SERVICES.Service.Generic
             _mapper = mapper;
             _validator = validator;
             _logger = logger;
+        }
+
+        public virtual async Task<Either<ApiResponse<string>, ApiResponse<PaginatedList<TDto>>>> GetByPaginationAsync(Page page, CancellationToken ct = default, params string[] includePaths)
+        {
+            try
+            {
+                var entities = await _repository.GetByPaginationAsync(page, null, ct, true, includePaths);
+                var mappedItems = _mapper.Map<List<TDto>>(entities.Items);
+                return Prelude.Right(ApiResponse<PaginatedList<TDto>>.Ok(new PaginatedList<TDto>(mappedItems, entities.TotalItems, page)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching all entities");
+                return Prelude.Left(ApiResponse<string>.Fail(["Internal Server Error"], HttpStatusCode.InternalServerError));
+            }
         }
 
         public virtual async Task<Either<ApiResponse<string>, ApiResponse<TDto>>> GetByIdAsync(GenericFromQueryDto genericQuery, CancellationToken ct = default)

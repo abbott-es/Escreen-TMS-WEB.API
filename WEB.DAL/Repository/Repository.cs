@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using WEB.DOMAIN.Interface;
 using WEB.DOMAIN.Resolver;
+using WEB.UTILITY.Pagination;
 
 namespace WEB.DAL.Repository
 {
@@ -16,6 +17,37 @@ namespace WEB.DAL.Repository
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _dbSet = _context.Set<T>();
+        }
+
+        public async Task<PaginatedList<T>> GetByPaginationAsync(
+            Page page,
+            Expression<Func<T, bool>>? predicate = null,
+            CancellationToken ct = default,
+            bool asNoTracking = true,
+            params string[] includePaths)
+        {
+            IQueryable<T> query = _dbSet;
+
+            if (asNoTracking)
+                query = query.AsNoTracking();
+
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            if (includePaths != null)
+            {
+                foreach (var include in includePaths)
+                    query = query.Include(include);
+            }
+
+            var totalCount = await query.CountAsync(ct);
+
+            var items = await query
+                .Skip((page.Number - 1) * page.Size)
+                .Take(page.Size)
+                .ToListAsync(ct);
+
+            return new PaginatedList<T>(items, totalCount, page);
         }
 
         public async Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths)

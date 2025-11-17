@@ -18,7 +18,7 @@ namespace WEB.DOMAIN.Config.Authentication
                 .HasMaxLength(128);
 
             builder.Property(t => t.DeviceInfo)
-                .HasMaxLength(256);
+                .HasMaxLength(1024);
 
             builder.HasOne(t => t.User)
                 .WithMany()
