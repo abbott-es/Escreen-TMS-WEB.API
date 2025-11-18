@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Routing.Template;
+﻿using LanguageExt;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using WEB.GATEWAY.Interfaces;
 using WEB.GATEWAY.Models;
@@ -60,16 +60,30 @@ public class ReverseProxyMiddleware
                 return;
             }
 
-            var path = context.Request.Path.Value ?? string.Empty;
-            static string NormalizePath(string p) => p?.Trim()?.ToLowerInvariant()!;
+            string path = context.Request.Path.Value ?? string.Empty;
+            static string NormalizePath(string p) => p?.Trim().TrimEnd('/').ToLowerInvariant()!;
+            string normalizedPath = NormalizePath(path);
+            const string _guidPattern = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+            const RegexOptions RouteRegexOptions = RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
-            var routeMatch = routes
-                .Where(r => r.Value?.Match?.Path != null)
-                .FirstOrDefault(r =>
-                    NormalizePath(r.Value.Match.Path!).Equals(NormalizePath(path), StringComparison.OrdinalIgnoreCase)
-                ).Value;
+            var routeMatch = routes.FirstOrDefault(r =>
+            {
+                var routePath = NormalizePath(r.Value?.Match?.Path ?? string.Empty);
+                if (string.IsNullOrEmpty(routePath))
+                    return false;
 
+                if (routePath.Contains("{id}", StringComparison.Ordinal))
+                {
+                    string routeRegex = RouteTemplate.BuildPattern(routePath);
+                    return Regex.IsMatch(normalizedPath, routeRegex, RouteRegexOptions);
 
+                }
+                else
+                {
+                    return normalizedPath.Equals(routePath, StringComparison.OrdinalIgnoreCase);
+                }
+            }).Value;
+            
             // endpoint matching
             if (routeMatch == null)
             {
