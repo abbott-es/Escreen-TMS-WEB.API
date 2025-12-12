@@ -1,0 +1,19 @@
+meta {
+  name: get-keyname
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/gateway-api/api/gateway?path=id
+  body: none
+  auth: inherit
+}
+
+params:query {
+  path: id
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,23 @@
+meta {
+  name: create
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{BASE_URL}}/gateway-api/api/gateway
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "method": 1,
+    "keyName": "string",
+    "gatewayUrl": "string"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

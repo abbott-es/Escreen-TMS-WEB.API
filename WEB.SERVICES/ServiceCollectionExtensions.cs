@@ -41,6 +41,7 @@ namespace WEB.SERVICES
                 cfg.AddProfile<ClientProfile>();
                 cfg.AddProfile<VehicleProfile>();
                 cfg.AddProfile<LocationProfile>();
+                cfg.AddProfile<GatewayProfile>();
                 cfg.AddProfile<BookingProfile>();
                 cfg.AddProfile<CoordinateProfile>();
                 cfg.AddProfile<StopProfile>();
@@ -70,6 +71,7 @@ namespace WEB.SERVICES
             services.AddScoped<IUserService, UserService>();//custom service
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IClientService, ClientService>();
+            services.AddScoped<IGatewayService, GatewayService>();
 
             #region Control Tower Service
             services.AddScoped<IBookingService, BookingService>();
@@ -88,6 +90,7 @@ namespace WEB.SERVICES
             services.AddScoped(typeof(IGenericService<UserDto>), typeof(GenericService<User, UserDto>));
             services.AddScoped(typeof(IGenericService<LocationDto>), typeof(GenericService<Location, LocationDto>));
             services.AddScoped(typeof(IGenericService<VehicleDto>), typeof(GenericService<Vehicle, VehicleDto>));
+            services.AddScoped(typeof(IGenericService<GatewayDto>), typeof(GenericService<Gateway, GatewayDto>));
             return services;
         }
 
@@ -113,6 +116,7 @@ namespace WEB.SERVICES
             services.AddScoped<IValidator<LocationDto>, LocationDtoValidator>();
             services.AddValidatorsFromAssemblyContaining<VehicleDtoValidator>();
             services.AddScoped<IValidator<VehicleDto>, VehicleDtoValidator>();
+            services.AddScoped<IValidator<GatewayDto>, GatewayValidator>();
 
             #region Control Tower
             services.AddValidatorsFromAssemblyContaining<BookingDtoValidator>();

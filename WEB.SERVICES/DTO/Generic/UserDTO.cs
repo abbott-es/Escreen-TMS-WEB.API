@@ -11,5 +11,8 @@ namespace WEB.SERVICES.DTO.Generic
         public Guid RoleID { get; set; }
         public AuthDto? Auth { get; set; }
         public UserInfoDto? UserInfo { get; set; }
+        public string? CreatedBy { get; set; }
+        public DateTime? CreatedAt { get; set; }
+
     }
 }

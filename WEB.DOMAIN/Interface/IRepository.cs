@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
+using WEB.UTILITY.Pagination;
 
 namespace WEB.DOMAIN.Interface
 {
     public interface IRepository<T> where T : class
     {
+        Task<PaginatedList<T>> GetByPaginationAsync(
+            Page page,
+            Expression<Func<T, bool>>? predicate = null,
+            CancellationToken ct = default,
+            bool asNoTracking = true,
+            params string[] includePaths);
         Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken ct = default, bool asNoTracking = true, params string[] includePaths);
 
         // If your entities always use Guid Id:
